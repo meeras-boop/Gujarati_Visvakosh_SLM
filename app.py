@@ -5,6 +5,8 @@ from collections import Counter
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+from reverse_engine import analyze as analyzer_score, model_vote, reverse_edit, load_models
+from pathlib import Path
 
 st.set_page_config(page_title='Gujarati Vishwakosh | SLM Research',page_icon='📚',layout='wide',initial_sidebar_state='expanded')
 st.markdown('''<style>
@@ -314,6 +316,8 @@ elif page=='Gujarati editor':
     spacing=c2.checkbox('Clean punctuation',True)
     level=c3.selectbox('Editorial mode',['Conservative','Context review','All candidates (review required)'],index=1)
     risk_level={'Conservative':'conservative','Context review':'context','All candidates (review required)':'all'}[level]
+    reverse_mode=st.checkbox('Analyzer-guided reverse editing · વિશ્લેષક મુજબ ફેરફાર',value=True,help='Accepts only edits that improve the supplied rule-based analyzer margin; not a guarantee of authentic Vishwakosh style.')
+    model_dir=st.text_input('Optional 17-model folder (trained_models)',value='trained_models',help='Optional: load your real PKL bundles for before/after independent classification. Not used to fabricate rewrites.')
     with st.expander('Editorial rules · select and inspect',expanded=False):
         groups=sorted(set(r[4] for r in RULES))
         group=st.selectbox('Category',['All']+groups)
@@ -328,7 +332,16 @@ elif page=='Gujarati editor':
         if not src.strip():
             st.warning('કૃપા કરીને ગુજરાતી લખાણ દાખલ કરો.')
         else:
-            edited_now, changes_now, warning_now = edit_with_audit(src, citation, spacing, risk_level)
+            if reverse_mode:
+                cleaned, fmt = static_edit(src, citation, spacing)
+                edited_now, accepted, rejected = reverse_edit(cleaned, RULES, risk_level)
+                changes_now=[{'id':'FORMAT','before':'','after':'','count':1,'risk':'format','note':x} for x in fmt]
+                changes_now += [{'id':x['id'],'before':x['before'],'after':x['after'],'count':1,'risk':x['risk'],'note':x['category']+'; analyzer gain '+str(x['margin_gain'])} for x in accepted]
+                warning_now=''
+                st.session_state.reverse_rejections=rejected
+            else:
+                edited_now, changes_now, warning_now = edit_with_audit(src, citation, spacing, risk_level)
+                st.session_state.reverse_rejections=[]
             st.session_state.conversion_result = (src, edited_now, changes_now, warning_now)
     if st.session_state.conversion_result is None:
         st.info('ઉપર તમારો ગુજરાતી ફકરો લખો અને **રૂપાંતર કરો** બટન દબાવો.')
@@ -355,6 +368,28 @@ elif page=='Gujarati editor':
     if any(x['risk']!='conservative' and x['risk']!='format' for x in changes):
         st.warning('Context-sensitive substitutions applied. Compare with the source before using the output.')
     st.download_button('Download edited text',edited.encode('utf-8'),file_name='gujarati_vishwakosh_edit.txt',mime='text/plain')
+    st.markdown('#### Reverse-engineered analyzer check')
+    before_an=analyzer_score(original); after_an=analyzer_score(edited)
+    d1,d2,d3=st.columns(3)
+    d1.metric('Original · heuristic',before_an['prediction'])
+    d2.metric('Edited · heuristic',after_an['prediction'])
+    d3.metric('Rule-based margin Δ',round(after_an['margin']-before_an['margin'],2))
+    st.dataframe(pd.DataFrame({'Original':{k:v for k,v in before_an.items() if k!='style_features'},'Edited':{k:v for k,v in after_an.items() if k!='style_features'}}),use_container_width=True)
+    with st.expander('All 41 original analyzer features'):
+        st.dataframe(pd.DataFrame({'Original':before_an['style_features'],'Edited':after_an['style_features']}),use_container_width=True)
+    if st.session_state.get('reverse_rejections'):
+        with st.expander('Rejected candidate substitutions'):
+            st.dataframe(pd.DataFrame(st.session_state.reverse_rejections),use_container_width=True)
+    if Path(model_dir).is_dir() and list(Path(model_dir).glob('*.pkl')):
+        with st.expander('Independent 17-model predictions · actual PKL bundles'):
+            before_ml=model_vote(original,model_dir);after_ml=model_vote(edited,model_dir)
+            if before_ml and after_ml:
+                st.write('Original votes: Vishwakosh',before_ml['v'],'/ Wikipedia',before_ml['w'])
+                st.write('Edited votes: Vishwakosh',after_ml['v'],'/ Wikipedia',after_ml['w'])
+                st.dataframe(pd.DataFrame([{'Model':a['model'],'Original':a['prediction'],'Edited':b['prediction']} for a,b in zip(before_ml['votes'],after_ml['votes'])]),use_container_width=True)
+            else:st.warning('No compatible model bundles loaded; no ML prediction is claimed.')
+    else:st.caption('17-model evaluation is optional. Add your trained_models/*.pkl bundles to enable it; the built-in check is rule-based only.')
+    st.caption('Increasing analyzer margin is a diagnostic target, not a guarantee of human-authentic Vishwakosh style or factual equivalence.')
     st.markdown('#### Style diagnostics')
     st.caption('Style markers are measured, not inserted artificially. A high marker count is not evidence of authentic editorial quality.')
     before_profile=style_profile(original)
