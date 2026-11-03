@@ -165,6 +165,52 @@ RULES = [
     ('R100', 'ઉપર જણાવ્યા પ્રમાણે', 'ઉપર જણાવ્યા મુજબ', 'conservative', 'Conciseness'),
 ]
 assert len(RULES) == 100
+# Additional editorial candidates; require corpus validation before scholarly use.
+EXTRA_RULES = [
+    ('R101', 'આ પણ જુઓ', 'જુઓ', 'review', 'Navigation'),
+    ('R102', 'ઉદાહરણ તરીકે', 'દાખલા તરીકે', 'context', 'Register'),
+    ('R103', 'કોઈપણ', 'કોઈ પણ', 'context', 'Register'),
+    ('R104', 'ઘણીવાર', 'ઘણી વાર', 'conservative', 'Orthography'),
+    ('R105', 'આ પ્રકારની', 'આવી', 'context', 'Conciseness'),
+    ('R106', 'આ પ્રકારના', 'આવા', 'context', 'Conciseness'),
+    ('R107', 'આ પ્રકારનું', 'આવું', 'context', 'Conciseness'),
+    ('R108', 'એટલા માટે', 'તેથી', 'review', 'Conciseness'),
+    ('R109', 'આ બાબતમાં', 'આ અંગે', 'context', 'Register'),
+    ('R110', 'આ અંગેની માહિતી', 'આ અંગે માહિતી', 'review', 'Conciseness'),
+    ('R111', 'મોટા પ્રમાણમાં', 'વિપુલ પ્રમાણમાં', 'review', 'Register'),
+    ('R112', 'આની મદદથી', 'તેની મદદથી', 'review', 'Register'),
+    ('R113', 'સામાન્ય રીતે', 'સામાન્યતઃ', 'context', 'Register'),
+    ('R114', 'વિશેષ રૂપે', 'વિશેષતઃ', 'context', 'Register'),
+    ('R115', 'પ્રાથમિક રીતે', 'મુખ્યત્વે', 'review', 'Register'),
+    ('R116', 'વધુમાં વધુ', 'મહત્તમ', 'review', 'Technical'),
+    ('R117', 'ઓછામાં ઓછું', 'લઘુતમ', 'review', 'Technical'),
+    ('R118', 'તેની સરખામણીમાં', 'તેની તુલનામાં', 'conservative', 'Register'),
+    ('R119', 'સાથે સાથે', 'સાથોસાથ', 'conservative', 'Register'),
+    ('R120', 'આના સિવાય', 'આ ઉપરાંત', 'context', 'Register'),
+    ('R121', 'અભ્યાસ કરવામાં આવ્યો', 'અભ્યાસ થયો', 'review', 'Research'),
+    ('R122', 'તપાસ કરવામાં આવી', 'તપાસ થઈ', 'review', 'Research'),
+    ('R123', 'સંશોધન કરવામાં આવ્યું', 'સંશોધન થયું', 'review', 'Research'),
+    ('R124', 'માહિતી એકત્રિત કરવામાં આવી', 'માહિતી એકત્ર થઈ', 'review', 'Research'),
+    ('R125', 'વિગતવાર માહિતી', 'વિસ્તૃત માહિતી', 'context', 'Register'),
+    ('R126', 'ખૂબ જ વધુ', 'અત્યધિક', 'review', 'Register'),
+    ('R127', 'આ રીતે કરવામાં આવે છે', 'આ રીતે કરાય છે', 'conservative', 'Definitions'),
+    ('R128', 'જેને કહેવામાં આવે છે', 'જેને કહેવાય છે', 'conservative', 'Definitions'),
+    ('R129', 'આ નામથી ઓળખાય છે', 'આ નામે ઓળખાય છે', 'conservative', 'Definitions'),
+    ('R130', 'એવું પણ કહેવામાં આવે છે', 'એવું પણ કહેવાય છે', 'conservative', 'Definitions'),
+    ('R131', 'આનો અર્થ એવો થાય છે કે', 'તેનો અર્થ એ થાય છે કે', 'context', 'Definitions'),
+    ('R132', 'આ બાબતનો ઉલ્લેખ', 'આનો ઉલ્લેખ', 'review', 'Conciseness'),
+    ('R133', 'તેની રચના કરવામાં આવી', 'તેની રચના થઈ', 'review', 'History'),
+    ('R134', 'આવી રીતે', 'આ રીતે', 'context', 'Conciseness'),
+    ('R135', 'વિગતો આપવામાં આવી છે', 'વિગતો અપાઈ છે', 'conservative', 'Definitions'),
+    ('R136', 'નોંધ કરવામાં આવી છે', 'નોંધ કરાઈ છે', 'conservative', 'Definitions'),
+    ('R137', 'અભ્યાસ માટે ઉપયોગમાં લેવાય છે', 'અભ્યાસમાં વપરાય છે', 'review', 'Research'),
+    ('R138', 'પ્રાપ્ત કરવામાં આવી હતી', 'પ્રાપ્ત થઈ હતી', 'review', 'History'),
+    ('R139', 'આપવામાં આવ્યું છે', 'અપાયું છે', 'conservative', 'Definitions'),
+    ('R140', 'તેના આધારે', 'તેને આધારે', 'context', 'Register'),
+]
+RULES.extend(EXTRA_RULES)
+assert len({r[0] for r in RULES}) == len(RULES)
+
 
 # Default to conservative replacements. Context-sensitive candidates require opt-in.
 def edit_with_audit(source, remove_citations=True, normalize_spacing=True, risk_level='conservative', enabled_ids=None):
@@ -181,10 +227,43 @@ def edit_with_audit(source, remove_citations=True, normalize_spacing=True, risk_
         if count:
             result = result.replace(old,new)
             changes.append({'id':rid,'before':old,'after':new,'count':count,'risk':risk,'note':category})
-    # Preserve numerals, and reject unexpected disappearance of non-citation numbers.
-    if Counter(NUMBERS.findall(source)) != Counter(NUMBERS.findall(result)):
-        return base, [x for x in changes if x['id']=='FORMAT'], 'Number mismatch: reverted phrase substitutions'
+    issues=protected_audit(CITATION.sub("",source) if remove_citations else source,result)
+    if issues:
+        return base, [x for x in changes if x['id']=='FORMAT'], 'Protected-content check: '+', '.join(issues)+'; phrase substitutions reverted'
     return result, changes, ''
+
+
+# Transparent, research-oriented style diagnostics based on the user's
+# supplied 17-model analyzer. These are descriptive heuristics, not a trained
+# classifier and not a validated probability of Vishwakosh authorship.
+V_STYLE_MARKERS = ['તથા','વળી','આથી','ગણાય','પ્રચલિત','કેટલાંક','અલબત્ત','તદુપરાંત','દા.ત.','એટલે કે','કહેવાય છે','તેમજ','ઉપરાંત','વિશેષ','એટલે','કરાય છે','ઓળખાય છે']
+W_STYLE_MARKERS = ['શામેલ','ઘણીવાર','કોઈપણ','ઉદાહરણ તરીકે','મુખ્ય લેખ','આ પણ જુઓ','બાહ્ય કડીઓ','કરવામાં આવે છે','આપવામાં આવે છે','બનાવવામાં આવે છે']
+PROTECTED_NEGATIONS = ['નથી','નહીં','નહિ','ન','વિના','અશક્ય']
+
+def style_profile(t):
+    words=t.split()
+    sentences=[x for x in re.split(r'(?<=[.!?।])\s+|\n+',t) if x.strip()]
+    v=sum(t.count(x) for x in V_STYLE_MARKERS)
+    w=sum(t.count(x) for x in W_STYLE_MARKERS)
+    return {'Vishwakosh marker occurrences':v,'Wikipedia marker occurrences':w,
+            'Vishwakosh marker share (descriptive)':round(v/(v+w),3) if v+w else None,
+            'Mean words per sentence':round(len(words)/len(sentences),2) if sentences else 0,
+            'English character share':round(sum(c.isascii() and c.isalpha() for c in t)/max(1,len(t)),4),
+            'Citation markers':len(CITATION.findall(t)),
+            'Long sentences (>35 words)':sum(len(x.split())>35 for x in sentences),
+            'Gujarati characters':sum('\u0a80'<=c<='\u0aff' for c in t)}
+
+def protected_audit(original, edited):
+    issues=[]
+    if Counter(NUMBERS.findall(original))!=Counter(NUMBERS.findall(edited)):
+        issues.append('Numbers differ')
+    for neg in PROTECTED_NEGATIONS:
+        if len(re.findall(r'(?<!\S)'+re.escape(neg)+r'(?!\S)',original)) != len(re.findall(r'(?<!\S)'+re.escape(neg)+r'(?!\S)',edited)):
+            issues.append('Negation changed: '+neg)
+    for token in re.findall(r'(?<![A-Za-z])[A-Z]{2,}(?![A-Za-z])',original):
+        if original.count(token)!=edited.count(token):
+            issues.append('Acronym changed: '+token)
+    return issues
 
 def text_metrics(t):
     s=[x.strip() for x in re.split(r'(?<=[.!?।])\s+',t) if x.strip()]
@@ -200,26 +279,26 @@ st.sidebar.markdown('## 📚 Gujarati Vishwakosh')
 st.sidebar.caption('Research and editorial workspace')
 page=st.sidebar.radio('Explore', ['Overview','Gujarati editor','Research journey','Final ByT5 pipeline','Training analytics','Model comparison','Style feature matrix','Evaluation & limitations','Deployment guide'])
 st.sidebar.divider()
-st.sidebar.caption('Editorial rules with transparent change tracking. No model inference in this app.')
+st.sidebar.caption('Editorial rules with transparent change tracking. Editorial changes are rule-based; no trained model is loaded.')
 
 if page=='Overview':
     st.markdown('<div class="hero"><h1>Gujarati Vishwakosh · Style-Controlled SLM Research</h1><p>Gujarati encyclopedic editing • multilingual small language models • transparent, fact-preserving workflows</p></div>',unsafe_allow_html=True)
     a,b,c,d=st.columns(4)
     a.metric('Source articles',44);b.metric('Converted references',43);c.metric('Candidate training pairs',1461);d.metric('Final validation loss', '0.4335')
     st.subheader('Research objective')
-    st.write('Study Gujarati Vishwakosh editorial conventions and develop an editor that transforms existing Wikipedia-style Gujarati into formal encyclopedic Gujarati while preserving facts, dates, names, and meaning. The final reported trained-model experiment uses **google/byt5-small**. This public demonstration intentionally uses **static rules only**.')
+    st.write('Study Gujarati Vishwakosh editorial conventions and develop an editor that transforms existing Wikipedia-style Gujarati into formal encyclopedic Gujarati while preserving facts, dates, names, and meaning. The final reported trained-model experiment uses **google/byt5-small**. This deployed editor uses transparent editorial rules; it does not claim to run the trained model.')
     st.markdown('<span class="chip">Gujarati NLP</span><span class="chip">Text-to-text editing</span><span class="chip">ByT5</span><span class="chip">mT5</span><span class="chip">Evidence-based evaluation</span>',unsafe_allow_html=True)
     st.subheader('Research flow at a glance')
     pipeline([('Corpus preparation','Wikipedia articles + converted Vishwakosh-style references + Excel reference'),('Style analysis','Editorial features, measurable diagnostics, protected facts'),('Model exploration','Rule-based teacher, mT5 experiments, ByT5 experiments'),('Final trained experiment','ByT5-small; manual PyTorch training, 5 epochs'),('Evaluation','Held-out loss, generation checks, 20 Gujarati tests; human fidelity review still required'),('Presentation-only deployment','Interactive editorial editor with no model weights or GPU')])
 
 elif page=='Gujarati editor':
     st.markdown('<div class="hero"><h1>ગુજરાતી વિશ્વકોશ · સંપાદક</h1><p>Gujarati editorial refinement · inspect every change · preserve source facts</p></div>',unsafe_allow_html=True)
-    st.caption('Rules are editorial candidates, not independently verified Vishwakosh usage. Context-dependent edits need review.')
+    st.caption('Gujarati encyclopedic editing with auditable changes. Rules are candidates, not verified Vishwakosh quotations.')
     src=st.text_area('મૂળ ગુજરાતી લખાણ',value=EXAMPLE,height=210,key='editor_input')
     c1,c2,c3=st.columns([1,1,2])
     citation=c1.checkbox('Remove citations',True)
     spacing=c2.checkbox('Clean punctuation',True)
-    level=c3.selectbox('Editorial mode',['Conservative','Context review','All candidates (review required)'],index=0)
+    level=c3.selectbox('Editorial mode',['Conservative','Context review','All candidates (review required)'],index=1)
     risk_level={'Conservative':'conservative','Context review':'context','All candidates (review required)':'all'}[level]
     with st.expander('Editorial rules · select and inspect',expanded=False):
         groups=sorted(set(r[4] for r in RULES))
@@ -228,7 +307,7 @@ elif page=='Gujarati editor':
         display=[r for r in RULES if (group=='All' or r[4]==group) and (not query or query.lower() in (' '.join(r)).lower())]
         st.dataframe(pd.DataFrame(display,columns=['ID','Original','Replacement','Review level','Category']),hide_index=True,use_container_width=True)
         st.caption('Conservative rules run by default. Other candidates are opt-in and may change agency, emphasis or meaning.')
-        st.download_button('Export 100-rule catalog',pd.DataFrame(RULES,columns=['ID','Original','Replacement','Review level','Category']).to_csv(index=False).encode('utf-8-sig'),file_name='gujarati_editorial_rules.csv',mime='text/csv')
+        st.download_button(f'Export {len(RULES)}-rule catalog',pd.DataFrame(RULES,columns=['ID','Original','Replacement','Review level','Category']).to_csv(index=False).encode('utf-8-sig'),file_name='gujarati_editorial_rules.csv',mime='text/csv')
     if 'conversion_result' not in st.session_state:
         st.session_state.conversion_result = None
     if st.button('✍️ Convert to Vishwakosh Gujarati · રૂપાંતર કરો', type='primary', use_container_width=True):
@@ -262,6 +341,16 @@ elif page=='Gujarati editor':
     if any(x['risk']!='conservative' and x['risk']!='format' for x in changes):
         st.warning('Context-sensitive substitutions applied. Compare with the source before using the output.')
     st.download_button('Download edited text',edited.encode('utf-8'),file_name='gujarati_vishwakosh_edit.txt',mime='text/plain')
+    st.markdown('#### Style diagnostics')
+    before_profile=style_profile(original)
+    after_profile=style_profile(edited)
+    st.dataframe(pd.DataFrame({'Before':before_profile,'After':after_profile}),use_container_width=True)
+    st.caption('Marker share is a descriptive indicator, not an accuracy score or proof of authentic Vishwakosh style. The supplied 17 ML classifiers classify source/category; they do not generate rewrites, and are not loaded here.')
+    review_issues=protected_audit(CITATION.sub("",original) if citation else original,edited)
+    if review_issues: st.error('Preservation audit: '+', '.join(review_issues))
+    else: st.success('Numbers, simple negation tokens and uppercase acronyms retained. Human factual review is still necessary.')
+    if edited==original: st.info('No matching candidate rule was found. This is not a model-generated paraphrase.')
+    st.download_button('Download change log (CSV)',pd.DataFrame(changes).to_csv(index=False).encode('utf-8-sig'),file_name='gujarati_edit_audit.csv',mime='text/csv')
     with st.expander('Before / after measurements'):
         st.dataframe(pd.DataFrame({'Before':text_metrics(original),'After':text_metrics(edited)}),use_container_width=True)
         st.caption('Number retention and word counts cannot prove semantic fidelity. Human checking is needed.')
