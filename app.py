@@ -61,6 +61,131 @@ def static_edit(source, remove_citations=True, normalize_spacing=True, apply_ter
                 changes.append(f'Reviewed term substitution: {a} → {b}')
     return t,changes
 
+# Editorial candidates provided by the researcher; NOT validated Vishwakosh corpus rules.
+RULES = [
+    ('R001', 'કહેવામાં આવે છે', 'કહેવાય છે', 'conservative', 'Definitions'),
+    ('R002', 'તરીકે ઓળખવામાં આવે છે', 'તરીકે ઓળખાય છે', 'conservative', 'Definitions'),
+    ('R003', 'નામથી ઓળખવામાં આવે છે', 'નામે ઓળખાય છે', 'conservative', 'Definitions'),
+    ('R004', 'ઉપયોગ કરવામાં આવે છે', 'ઉપયોગ થાય છે', 'review', 'Definitions'),
+    ('R005', 'વર્ણન કરવામાં આવ્યું છે', 'વર્ણવાયું છે', 'context', 'Definitions'),
+    ('R006', 'રજૂ કરવામાં આવ્યું છે', 'રજૂ થયું છે', 'review', 'Definitions'),
+    ('R007', 'દર્શાવવામાં આવ્યું છે', 'દર્શાવાયું છે', 'context', 'Definitions'),
+    ('R008', 'જોવા મળતું હોય છે', 'જોવા મળે છે', 'conservative', 'Definitions'),
+    ('R009', 'માનવામાં આવે છે', 'મનાય છે', 'conservative', 'Definitions'),
+    ('R010', 'ગણવામાં આવે છે', 'ગણાય છે', 'conservative', 'Definitions'),
+    ('R011', 'સમજાવવામાં આવ્યું છે', 'સમજાવાયું છે', 'context', 'Definitions'),
+    ('R012', 'સમાવેશ કરવામાં આવે છે', 'સમાવેશ થાય છે', 'review', 'Definitions'),
+    ('R013', 'રચના કરવામાં આવી હતી', 'રચના થઈ હતી', 'review', 'Definitions'),
+    ('R014', 'સ્થાપના કરવામાં આવી હતી', 'સ્થાપના થઈ હતી', 'review', 'Definitions'),
+    ('R015', 'શોધ કરવામાં આવી હતી', 'શોધ થઈ હતી', 'review', 'Definitions'),
+    ('R016', 'વિકાસ કરવામાં આવ્યો હતો', 'વિકાસ થયો હતો', 'review', 'Definitions'),
+    ('R017', 'પ્રયોગ કરવામાં આવ્યો હતો', 'પ્રયોગ થયો હતો', 'review', 'Definitions'),
+    ('R018', 'પરિવર્તન કરવામાં આવ્યું હતું', 'પરિવર્તન થયું હતું', 'review', 'Definitions'),
+    ('R019', 'ઉલ્લેખ કરવામાં આવ્યો છે', 'ઉલ્લેખ થયો છે', 'review', 'Definitions'),
+    ('R020', 'અભ્યાસ કરવામાં આવે છે', 'અભ્યાસ થાય છે', 'review', 'Definitions'),
+    ('R021', 'આ બાબત વિશે', 'આ અંગે', 'conservative', 'Vocabulary'),
+    ('R022', 'આ વિષય વિશે', 'આ વિષય અંગે', 'conservative', 'Vocabulary'),
+    ('R023', 'તેના વિશેની માહિતી', 'તે અંગેની માહિતી', 'conservative', 'Vocabulary'),
+    ('R024', 'માહિતી મળી શકે છે', 'માહિતી પ્રાપ્ત થઈ શકે છે', 'context', 'Vocabulary'),
+    ('R025', 'ખૂબ જ મહત્વનું', 'અત્યંત મહત્વનું', 'context', 'Vocabulary'),
+    ('R026', 'ખૂબ મોટો', 'વિશાળ', 'review', 'Vocabulary'),
+    ('R027', 'ખૂબ નાનો', 'અતિસૂક્ષ્મ', 'review', 'Vocabulary'),
+    ('R028', 'અલગ અલગ પ્રકારના', 'વિવિધ પ્રકારના', 'conservative', 'Vocabulary'),
+    ('R029', 'જુદા જુદા પ્રકારના', 'વિવિધ પ્રકારના', 'conservative', 'Vocabulary'),
+    ('R030', 'ઘણા બધા', 'અનેક', 'review', 'Vocabulary'),
+    ('R031', 'ઘણાં પ્રકારનાં', 'વિવિધ', 'review', 'Vocabulary'),
+    ('R032', 'મુખ્ય કારણ', 'પ્રમુખ કારણ', 'review', 'Vocabulary'),
+    ('R033', 'મહત્વની ભૂમિકા', 'નોંધપાત્ર ભૂમિકા', 'review', 'Vocabulary'),
+    ('R034', 'ખાસ કરીને', 'વિશેષ કરીને', 'conservative', 'Vocabulary'),
+    ('R035', 'આ ઉપરાંત', 'ઉપરાંત', 'conservative', 'Vocabulary'),
+    ('R036', 'તેના કારણે', 'પરિણામે', 'review', 'Vocabulary'),
+    ('R037', 'આ રીતે', 'આ પ્રમાણે', 'review', 'Vocabulary'),
+    ('R038', 'આ માટે', 'આ હેતુથી', 'review', 'Vocabulary'),
+    ('R039', 'ફરી ઉપલબ્ધ થતા', 'પુનઃ ઉપલબ્ધ થતા', 'conservative', 'Vocabulary'),
+    ('R040', 'ઊંચા તાપમાને', 'ઉચ્ચ તાપમાને', 'conservative', 'Vocabulary'),
+    ('R041', 'અલગ ચિહ્નો', 'ભિન્ન ચિહ્નો', 'conservative', 'Technical'),
+    ('R042', 'જુદી પદ્ધતિ', 'ભિન્ન પદ્ધતિ', 'conservative', 'Technical'),
+    ('R043', 'અલગ સ્વરૂપ', 'ભિન્ન સ્વરૂપ', 'conservative', 'Technical'),
+    ('R044', 'તપાસ કરવામાં આવે છે', 'પરીક્ષણ કરવામાં આવે છે', 'review', 'Technical'),
+    ('R045', 'માપવામાં આવે છે', 'માપન થાય છે', 'review', 'Technical'),
+    ('R046', 'ગણતરી કરવામાં આવે છે', 'ગણતરી થાય છે', 'review', 'Technical'),
+    ('R047', 'ઉપયોગમાં લેવામાં આવે છે', 'ઉપયોગમાં લેવાય છે', 'conservative', 'Technical'),
+    ('R048', 'નોંધવામાં આવે છે', 'નોંધાય છે', 'conservative', 'Technical'),
+    ('R049', 'સંગ્રહ કરવામાં આવે છે', 'સંગ્રહાય છે', 'review', 'Technical'),
+    ('R050', 'ઉત્પન્ન કરવામાં આવે છે', 'ઉત્પન્ન થાય છે', 'review', 'Technical'),
+    ('R051', 'બનાવવામાં આવે છે', 'બને છે', 'review', 'Technical'),
+    ('R052', 'મેળવવામાં આવે છે', 'પ્રાપ્ત થાય છે', 'review', 'Technical'),
+    ('R053', 'મોકલવામાં આવે છે', 'મોકલાય છે', 'context', 'Technical'),
+    ('R054', 'દર્શાવવામાં આવે છે', 'દર્શાવાય છે', 'conservative', 'Technical'),
+    ('R055', 'ઓળખવામાં આવે છે', 'ઓળખાય છે', 'conservative', 'Technical'),
+    ('R056', 'વહેંચવામાં આવે છે', 'વહેંચાય છે', 'review', 'Technical'),
+    ('R057', 'બદલવામાં આવે છે', 'બદલાય છે', 'review', 'Technical'),
+    ('R058', 'વધારવામાં આવે છે', 'વધે છે', 'review', 'Technical'),
+    ('R059', 'ઘટાડવામાં આવે છે', 'ઘટે છે', 'review', 'Technical'),
+    ('R060', 'નિયંત્રિત કરવામાં આવે છે', 'નિયંત્રિત થાય છે', 'review', 'Technical'),
+    ('R061', 'જન્મ થયો હતો', 'જન્મ થયો', 'context', 'Historical'),
+    ('R062', 'મૃત્યુ થયું હતું', 'અવસાન થયું', 'review', 'Historical'),
+    ('R063', 'જીવનકાળ દરમિયાન', 'જીવનકાળમાં', 'conservative', 'Historical'),
+    ('R064', 'તે સમય દરમિયાન', 'તે સમયે', 'conservative', 'Historical'),
+    ('R065', 'આ સમયગાળા દરમિયાન', 'આ સમયગાળામાં', 'conservative', 'Historical'),
+    ('R066', 'પ્રાચીન સમયથી', 'પ્રાચીનકાળથી', 'conservative', 'Historical'),
+    ('R067', 'જુના સમયમાં', 'પ્રાચીનકાળમાં', 'review', 'Historical'),
+    ('R068', 'ઇતિહાસમાં જોવા મળે છે', 'ઇતિહાસમાં નોંધાય છે', 'review', 'Historical'),
+    ('R069', 'ઉલ્લેખ જોવા મળે છે', 'ઉલ્લેખ મળે છે', 'conservative', 'Historical'),
+    ('R070', 'લખવામાં આવ્યું હતું', 'લખાયું હતું', 'conservative', 'Historical'),
+    ('R071', 'પ્રકાશિત કરવામાં આવ્યું હતું', 'પ્રકાશિત થયું હતું', 'review', 'Historical'),
+    ('R072', 'અનુવાદ કરવામાં આવ્યો હતો', 'અનુવાદ થયો હતો', 'review', 'Historical'),
+    ('R073', 'રચના કરવામાં આવી હતી', 'રચના થઈ હતી', 'review', 'Historical'),
+    ('R074', 'લોકપ્રિય બન્યું હતું', 'લોકપ્રિય બન્યું', 'conservative', 'Historical'),
+    ('R075', 'પ્રસિદ્ધિ મેળવી હતી', 'પ્રસિદ્ધિ મેળવી', 'conservative', 'Historical'),
+    ('R076', 'જાણીતા હતા', 'પ્રસિદ્ધ હતા', 'review', 'Historical'),
+    ('R077', 'મહત્વપૂર્ણ યોગદાન', 'નોંધપાત્ર યોગદાન', 'review', 'Historical'),
+    ('R078', 'અનેક પુસ્તકો', 'અનેક ગ્રંથો', 'review', 'Historical'),
+    ('R079', 'લખાણમાં ઉલ્લેખ છે', 'લખાણમાં ઉલ્લેખ મળે છે', 'conservative', 'Historical'),
+    ('R080', 'માહિતી આપવામાં આવી છે', 'માહિતી અપાઈ છે', 'conservative', 'Historical'),
+    ('R081', 'એ વાત નોંધવી જરૂરી છે કે', 'નોંધનીય છે કે', 'review', 'Conciseness'),
+    ('R082', 'એ સમજવું મહત્વનું છે કે', 'નોંધનીય છે કે', 'review', 'Conciseness'),
+    ('R083', 'આ બાબત ધ્યાનમાં રાખવી જોઈએ કે', 'ધ્યાનમાં રાખવું જોઈએ કે', 'conservative', 'Conciseness'),
+    ('R084', 'આના પરિણામ સ્વરૂપે', 'પરિણામે', 'review', 'Conciseness'),
+    ('R085', 'આ કારણને લીધે', 'આ કારણે', 'conservative', 'Conciseness'),
+    ('R086', 'તેના પરિણામ તરીકે', 'પરિણામે', 'review', 'Conciseness'),
+    ('R087', 'આ હેતુ માટે', 'આ માટે', 'conservative', 'Conciseness'),
+    ('R088', 'તેના ઉપયોગ દ્વારા', 'તેના ઉપયોગથી', 'conservative', 'Conciseness'),
+    ('R089', 'આ પ્રક્રિયા દરમિયાન', 'આ પ્રક્રિયામાં', 'conservative', 'Conciseness'),
+    ('R090', 'વિવિધ પ્રકારની પદ્ધતિઓ', 'વિવિધ પદ્ધતિઓ', 'conservative', 'Conciseness'),
+    ('R091', 'ઘણા જુદા જુદા પ્રકારના', 'અનેક પ્રકારના', 'conservative', 'Conciseness'),
+    ('R092', 'સંપૂર્ણ રીતે', 'સંપૂર્ણપણે', 'conservative', 'Conciseness'),
+    ('R093', 'સામાન્ય રીતે જોવા મળે છે', 'સામાન્ય રીતે મળે છે', 'review', 'Conciseness'),
+    ('R094', 'તે જોવા મળ્યું હતું કે', 'એવું જોવા મળ્યું કે', 'review', 'Conciseness'),
+    ('R095', 'એવો અંદાજ લગાવવામાં આવે છે કે', 'એવો અંદાજ છે કે', 'review', 'Conciseness'),
+    ('R096', 'એવું માનવામાં આવે છે કે', 'એવું મનાય છે કે', 'conservative', 'Conciseness'),
+    ('R097', 'તેવું કહી શકાય છે કે', 'કહી શકાય કે', 'conservative', 'Conciseness'),
+    ('R098', 'આ રીતે કહી શકાય કે', 'કહી શકાય કે', 'conservative', 'Conciseness'),
+    ('R099', 'નીચે મુજબ દર્શાવવામાં આવ્યું છે', 'નીચે દર્શાવ્યું છે', 'review', 'Conciseness'),
+    ('R100', 'ઉપર જણાવ્યા પ્રમાણે', 'ઉપર જણાવ્યા મુજબ', 'conservative', 'Conciseness'),
+]
+assert len(RULES) == 100
+
+# Default to conservative replacements. Context-sensitive candidates require opt-in.
+def edit_with_audit(source, remove_citations=True, normalize_spacing=True, risk_level='conservative', enabled_ids=None):
+    base, formatting = static_edit(source, remove_citations, normalize_spacing, False, None)
+    result = base
+    changes = [{'id':'FORMAT', 'before':'', 'after':'', 'count':1, 'risk':'format', 'note':x} for x in formatting]
+    allowed = {'conservative'} if risk_level=='conservative' else {'conservative','context'} if risk_level=='context' else {'conservative','context','review'}
+    enabled_ids = enabled_ids if enabled_ids is not None else {r[0] for r in RULES}
+    # Longer matches first, preventing shorter matches from consuming more specific patterns.
+    for rid, old, new, risk, category in sorted(RULES, key=lambda r:(-len(r[1]),r[0])):
+        if rid not in enabled_ids or risk not in allowed or old == new:
+            continue
+        count = result.count(old)
+        if count:
+            result = result.replace(old,new)
+            changes.append({'id':rid,'before':old,'after':new,'count':count,'risk':risk,'note':category})
+    # Preserve numerals, and reject unexpected disappearance of non-citation numbers.
+    if Counter(NUMBERS.findall(source)) != Counter(NUMBERS.findall(result)):
+        return base, [x for x in changes if x['id']=='FORMAT'], 'Number mismatch: reverted phrase substitutions'
+    return result, changes, ''
+
 def text_metrics(t):
     s=[x.strip() for x in re.split(r'(?<=[.!?।])\s+',t) if x.strip()]
     words=t.split()
@@ -72,10 +197,10 @@ def pipeline(items):
         if i<len(items): st.markdown('<div style="margin-left:24px;color:#4975c7;font-size:1.2rem">↓</div>',unsafe_allow_html=True)
 
 st.sidebar.markdown('## 📚 Gujarati Vishwakosh')
-st.sidebar.caption('Research showcase · Static demonstration')
-page=st.sidebar.radio('Explore', ['Overview','Live static editor','Research journey','Final ByT5 pipeline','Training analytics','Model comparison','Style feature matrix','Evaluation & limitations','Deployment guide'])
+st.sidebar.caption('Research and editorial workspace')
+page=st.sidebar.radio('Explore', ['Overview','Gujarati editor','Research journey','Final ByT5 pipeline','Training analytics','Model comparison','Style feature matrix','Evaluation & limitations','Deployment guide'])
 st.sidebar.divider()
-st.sidebar.info('This application never loads or trains an SLM. The editor is deterministic; training figures are documented experiment results.')
+st.sidebar.caption('Editorial rules with transparent change tracking. No model inference in this app.')
 
 if page=='Overview':
     st.markdown('<div class="hero"><h1>Gujarati Vishwakosh · Style-Controlled SLM Research</h1><p>Gujarati encyclopedic editing • multilingual small language models • transparent, fact-preserving workflows</p></div>',unsafe_allow_html=True)
@@ -85,41 +210,48 @@ if page=='Overview':
     st.write('Study Gujarati Vishwakosh editorial conventions and develop an editor that transforms existing Wikipedia-style Gujarati into formal encyclopedic Gujarati while preserving facts, dates, names, and meaning. The final reported trained-model experiment uses **google/byt5-small**. This public demonstration intentionally uses **static rules only**.')
     st.markdown('<span class="chip">Gujarati NLP</span><span class="chip">Text-to-text editing</span><span class="chip">ByT5</span><span class="chip">mT5</span><span class="chip">Evidence-based evaluation</span>',unsafe_allow_html=True)
     st.subheader('Research flow at a glance')
-    pipeline([('Corpus preparation','Wikipedia articles + converted Vishwakosh-style references + Excel reference'),('Style analysis','Editorial features, measurable diagnostics, protected facts'),('Model exploration','Rule-based teacher, mT5 experiments, ByT5 experiments'),('Final trained experiment','ByT5-small; manual PyTorch training, 5 epochs'),('Evaluation','Held-out loss, generation checks, 20 Gujarati tests; human fidelity review still required'),('Presentation-only deployment','Static Streamlit editor with no model weights or GPU')])
+    pipeline([('Corpus preparation','Wikipedia articles + converted Vishwakosh-style references + Excel reference'),('Style analysis','Editorial features, measurable diagnostics, protected facts'),('Model exploration','Rule-based teacher, mT5 experiments, ByT5 experiments'),('Final trained experiment','ByT5-small; manual PyTorch training, 5 epochs'),('Evaluation','Held-out loss, generation checks, 20 Gujarati tests; human fidelity review still required'),('Presentation-only deployment','Interactive editorial editor with no model weights or GPU')])
 
-elif page=='Live static editor':
-    st.title('✍️ Live Gujarati Vishwakosh-style editor')
-    st.warning('Static editorial formatting only. Formal tone and meaning-preserving paraphrasing cannot be guaranteed without reviewed rules or a model. No model is loaded.')
-    src=st.text_area('Input Gujarati paragraph',value=EXAMPLE,height=180)
-    c1,c2,c3=st.columns(3)
-    citation=c1.checkbox('Remove numeric citations',value=True)
-    spacing=c2.checkbox('Normalize spacing',value=True)
-    terms_on=c3.checkbox('Apply reviewed terminology',value=False)
-    with st.expander('Terminology substitutions — editable and opt-in'):
-        st.caption('Illustrative mappings, not validated against the entire Vishwakosh corpus. Review each mapping before using it.')
-        raw_terms=st.text_area('One source=target mapping per line',value='\n'.join(f'{a}={b}' for a,b in DEFAULT_TERMS.items()),height=120)
-    terms={}
-    for line in raw_terms.splitlines():
-        if '=' in line:
-            a,b=line.split('=',1)
-            if a.strip() and b.strip():terms[a.strip()]=b.strip()
-    output,changes=static_edit(src,citation,spacing,terms_on,terms)
-    l,r=st.columns(2)
-    with l:
+elif page=='Gujarati editor':
+    st.markdown('<div class="hero"><h1>ગુજરાતી વિશ્વકોશ · સંપાદક</h1><p>Gujarati editorial refinement · inspect every change · preserve source facts</p></div>',unsafe_allow_html=True)
+    st.caption('Rules are editorial candidates, not independently verified Vishwakosh usage. Context-dependent edits need review.')
+    src=st.text_area('મૂળ ગુજરાતી લખાણ',value=EXAMPLE,height=210,key='editor_input')
+    c1,c2,c3=st.columns([1,1,2])
+    citation=c1.checkbox('Remove citations',True)
+    spacing=c2.checkbox('Clean punctuation',True)
+    level=c3.selectbox('Editorial mode',['Conservative','Context review','All candidates (review required)'],index=0)
+    risk_level={'Conservative':'conservative','Context review':'context','All candidates (review required)':'all'}[level]
+    with st.expander('Editorial rules · select and inspect',expanded=False):
+        groups=sorted(set(r[4] for r in RULES))
+        group=st.selectbox('Category',['All']+groups)
+        query=st.text_input('Search rule ID or Gujarati phrase')
+        display=[r for r in RULES if (group=='All' or r[4]==group) and (not query or query.lower() in (' '.join(r)).lower())]
+        st.dataframe(pd.DataFrame(display,columns=['ID','Original','Replacement','Review level','Category']),hide_index=True,use_container_width=True)
+        st.caption('Conservative rules run by default. Other candidates are opt-in and may change agency, emphasis or meaning.')
+        st.download_button('Export 100-rule catalog',pd.DataFrame(RULES,columns=['ID','Original','Replacement','Review level','Category']).to_csv(index=False).encode('utf-8-sig'),file_name='gujarati_editorial_rules.csv',mime='text/csv')
+    edited,changes,warning=edit_with_audit(src,citation,spacing,risk_level)
+    left,right=st.columns(2)
+    with left:
         st.markdown('#### Original')
-        st.text_area('Original text',src,height=220,disabled=True,label_visibility='collapsed')
-    with r:
+        st.text_area('Original paragraph',src,height=250,disabled=True,label_visibility='collapsed',key='original_panel')
+    with right:
         st.markdown('#### Edited')
-        st.text_area('Edited text',output,height=220,label_visibility='collapsed')
-    st.download_button('Download edited Gujarati text',output,file_name='vishwakosh_static_edit.txt',mime='text/plain')
-    if changes: st.success('Applied: '+'; '.join(changes))
-    else: st.info('No eligible deterministic changes were found.')
-    if Counter(NUMBERS.findall(src))!=Counter(NUMBERS.findall(output)):
-        st.error('Numeric content changed. Review before using this output.')
-    st.subheader('Before / after diagnostics')
-    metrics=pd.DataFrame({'Before':text_metrics(src),'After':text_metrics(output)})
-    st.dataframe(metrics,use_container_width=True)
-    st.caption('Passing numeric and length checks does not establish semantic equivalence. Human review remains necessary.')
+        st.text_area('Edited paragraph',edited,height=250,label_visibility='collapsed',key='edited_panel')
+    a,b,c=st.columns(3)
+    a.metric('Applied operations',sum(x['count'] for x in changes))
+    b.metric('Rules triggered',len({x['id'] for x in changes if x['id']!='FORMAT'}))
+    c.metric('Words',len(edited.split()))
+    if warning: st.error(warning)
+    if changes:
+        st.markdown('#### Applied changes')
+        st.dataframe(pd.DataFrame(changes),hide_index=True,use_container_width=True)
+    else: st.info('No applicable edits found for this paragraph. The text was preserved.')
+    if any(x['risk']!='conservative' and x['risk']!='format' for x in changes):
+        st.warning('Context-sensitive substitutions applied. Compare with the source before using the output.')
+    st.download_button('Download edited text',edited.encode('utf-8'),file_name='gujarati_vishwakosh_edit.txt',mime='text/plain')
+    with st.expander('Before / after measurements'):
+        st.dataframe(pd.DataFrame({'Before':text_metrics(src),'After':text_metrics(edited)}),use_container_width=True)
+        st.caption('Number retention and word counts cannot prove semantic fidelity. Human checking is needed.')
 
 elif page=='Research journey':
     st.title('🧪 Research journey and experiment progression')
@@ -131,7 +263,7 @@ elif page=='Research journey':
       ('Stage D · Qwen exploration','Qwen 2.5 1.5B / 7B','Instruction-tuned style rewriting and QLoRA exploration in earlier Colab work; low/zero reported accuracy and training issues motivated further debugging.','Exploratory; do not infer successful training'),
       ('Stage E · ByT5 with Trainer','google/byt5-small · V4/V4.1','1,096 aligned conversion candidates + 365 cleanup examples; Trainer path produced NaN despite finite pre-training forward/backward checks.','Failed numerical training path'),
       ('Stage F · ByT5 manual PyTorch','google/byt5-small · V5','Three manual optimizer steps and then 20-step preflight passed; 6,000 training steps across five epochs; best validation loss 0.433460.','Completed training; final reported model'),
-      ('Stage G · Static Streamlit showcase','No weights, no training, no inference','Deterministic editorial cleanup and interactive PhD research presentation.','Live application demonstration')]
+      ('Stage G · Streamlit showcase','No weights, no training, no inference','Deterministic editorial cleanup and interactive PhD research presentation.','Live application demonstration')]
     for title,tech,description,status in stages:
         with st.expander(title,expanded=('Stage F' in title)):
             st.markdown(f'**Approach:** {tech}')
@@ -145,7 +277,7 @@ elif page=='Final ByT5 pipeline':
     st.success('Reported training completed: 5 epochs / 6,000 updates / validation loss 0.433460. This page does not load the checkpoint.')
     pipeline([('Existing Google Drive data','44 Wikipedia articles; 43 converted articles; Vishwakosh Excel reference'),('Title matching','43 matched article titles'),('Candidate alignment','1,096 approximate sentence-level converted pairs; not human-verified'),('Deterministic cleanup examples','365 synthetic cleanup pairs; 1,461 total candidates'),('Article-level split','1,200 training + 160 validation examples; leakage reduced by title grouping'),('Byte-level tokenization','ByT5Tokenizer; short input/output spans, 512 token limit'),('20-step numerical preflight','Manual FP32 forward/backward; gradient clipping; reject non-finite values'),('Manual PyTorch fine-tuning','ByT5-small; AdamW; LR 1e-5; batch 1; 5 epochs; 6,000 updates'),('Validation and checkpoint','Validation loss each epoch; best checkpoint saved to Google Drive'),('Constrained generation and audit','Check numeric retention, overlap, length, Gujarati script; fallback to deterministic editor'),('20-topic Gujarati evaluation','Raw model outputs and final guarded outputs; human review required')])
     st.subheader('Architecture schematic')
-    st.graphviz_chart('''digraph G {rankdir=LR; bgcolor="transparent"; node [shape=box style="rounded,filled" fillcolor="#eaf2ff" color="#4475b8" fontname="Helvetica" fontsize=11]; A[label="Gujarati source"]; B[label="ByT5 encoder"]; C[label="ByT5 decoder"]; D[label="Raw rewrite"]; E[label="Safety audit" fillcolor="#fff0d6"]; F[label="Accepted output" fillcolor="#dff5e8"]; G[label="Static fallback" fillcolor="#f8e5e5"]; A->B->C->D->E; E->F[label="pass"]; E->G[label="reject"]; }''',use_container_width=True)
+    st.graphviz_chart('''digraph G {rankdir=LR; bgcolor="transparent"; node [shape=box style="rounded,filled" fillcolor="#eaf2ff" color="#4475b8" fontname="Helvetica" fontsize=11]; A[label="Gujarati source"]; B[label="ByT5 encoder"]; C[label="ByT5 decoder"]; D[label="Raw rewrite"]; E[label="Safety audit" fillcolor="#fff0d6"]; F[label="Accepted output" fillcolor="#dff5e8"]; G[label="Guarded fallback" fillcolor="#f8e5e5"]; A->B->C->D->E; E->F[label="pass"]; E->G[label="reject"]; }''',use_container_width=True)
     st.code('MyDrive/Gujarati_Visvakosh_ByT5_Style_Editor_V5_Manual/model',language='text')
     st.caption('Checkpoint location is a reported Drive path; Streamlit does not access it.')
 
