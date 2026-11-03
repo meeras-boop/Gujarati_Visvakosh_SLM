@@ -229,11 +229,24 @@ elif page=='Gujarati editor':
         st.dataframe(pd.DataFrame(display,columns=['ID','Original','Replacement','Review level','Category']),hide_index=True,use_container_width=True)
         st.caption('Conservative rules run by default. Other candidates are opt-in and may change agency, emphasis or meaning.')
         st.download_button('Export 100-rule catalog',pd.DataFrame(RULES,columns=['ID','Original','Replacement','Review level','Category']).to_csv(index=False).encode('utf-8-sig'),file_name='gujarati_editorial_rules.csv',mime='text/csv')
-    edited,changes,warning=edit_with_audit(src,citation,spacing,risk_level)
+    if 'conversion_result' not in st.session_state:
+        st.session_state.conversion_result = None
+    if st.button('✍️ Convert to Vishwakosh Gujarati · રૂપાંતર કરો', type='primary', use_container_width=True):
+        if not src.strip():
+            st.warning('કૃપા કરીને ગુજરાતી લખાણ દાખલ કરો.')
+        else:
+            edited_now, changes_now, warning_now = edit_with_audit(src, citation, spacing, risk_level)
+            st.session_state.conversion_result = (src, edited_now, changes_now, warning_now)
+    if st.session_state.conversion_result is None:
+        st.info('ઉપર તમારો ગુજરાતી ફકરો લખો અને **રૂપાંતર કરો** બટન દબાવો.')
+        st.stop()
+    original, edited, changes, warning = st.session_state.conversion_result
+    if original != src:
+        st.info('Input has changed since the last conversion. Click **રૂપાંતર કરો** to update the result.')
     left,right=st.columns(2)
     with left:
         st.markdown('#### Original')
-        st.text_area('Original paragraph',src,height=250,disabled=True,label_visibility='collapsed',key='original_panel')
+        st.text_area('Original paragraph',original,height=250,disabled=True,label_visibility='collapsed',key='original_panel')
     with right:
         st.markdown('#### Edited')
         st.text_area('Edited paragraph',edited,height=250,label_visibility='collapsed',key='edited_panel')
@@ -250,7 +263,7 @@ elif page=='Gujarati editor':
         st.warning('Context-sensitive substitutions applied. Compare with the source before using the output.')
     st.download_button('Download edited text',edited.encode('utf-8'),file_name='gujarati_vishwakosh_edit.txt',mime='text/plain')
     with st.expander('Before / after measurements'):
-        st.dataframe(pd.DataFrame({'Before':text_metrics(src),'After':text_metrics(edited)}),use_container_width=True)
+        st.dataframe(pd.DataFrame({'Before':text_metrics(original),'After':text_metrics(edited)}),use_container_width=True)
         st.caption('Number retention and word counts cannot prove semantic fidelity. Human checking is needed.')
 
 elif page=='Research journey':
