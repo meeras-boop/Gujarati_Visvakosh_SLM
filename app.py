@@ -1,329 +1,3 @@
-"""Single-file Gujarati Vishwakosh editor: analyzer and reverse engine embedded."""
-import re
-import unicodedata
-import os
-from collections import Counter
-from functools import lru_cache
-from pathlib import Path
-from typing import Any, Dict, List, Tuple
-import numpy as np
-import pandas as pd
-import plotly.graph_objects as go
-import streamlit as st
-from scipy.sparse import csr_matrix, hstack
-
-
-# --- EMBEDDED ANALYZER ---
-"""Analyzer features reproduced from the user-supplied 17-model Streamlit analyzer."""
-
-import re
-
-import numpy as np
-
-from collections import Counter
-
-from typing import Any, Dict, List, Tuple
-
-from scipy.sparse import csr_matrix, hstack
-
-CATEGORIES = ['Person Biography', 'Computer Science & Information Technology', 'Engineering & Technology', 'Medical & Health Sciences', 'Education & Research', 'Language, Literature & Communication', 'Science, Industry & Society']
-
-CATEGORY_KEYWORDS = {'Person Biography': {'visvakosh': ['જન્મ', 'અવસાન', 'પદવી', 'શિક્ષણ', 'યુનિવર્સિટી', 'પ્રોફેસર', 'વૈજ્ઞાનિક', 'ગણિતશાસ્ત્રી', 'ઇજનેર', 'સંશોધક', 'સંશોધન', 'કારકિર્દી', 'પ્રદાન', 'પુરસ્કાર', 'ઍવૉર્ડ', 'મેડલ', 'એનાયત', 'ફેલો', 'સભ્ય', 'સ્થાપક', 'ડિરેક્ટર', 'પીએચ.ડી.', 'હિન્ટન', 'એકર્ટ', 'એડા', 'ટ્યૂરિંગ', 'બૅબેજ', 'ચિદંબરમ્'], 'wikipedia': ['જન્મ', 'મૃત્યુ', 'જીવન', 'જીવનચરિત્ર', 'કારકિર્દી', 'શિક્ષણ', 'કાર્ય', 'યોગદાન', 'સંશોધન', 'વૈજ્ઞાનિક', 'ગણિતશાસ્ત્રી', 'ઇજનેર', 'પ્રોગ્રામર', 'પ્રોફેસર', 'યુનિવર્સિટી', 'પુરસ્કાર', 'સન્માન', 'પદવી', 'જાણીતા', 'સ્થાપક', 'researcher', 'scientist', 'engineer', 'mathematician']}, 'Computer Science & Information Technology': {'visvakosh': ['કોમ્પ્યૂટર', 'કમ્પ્યુટર', 'સૉફ્ટવૅર', 'હાર્ડવેર', 'પ્રોગ્રામ', 'પ્રોગ્રામિંગ', 'અલ્ગોરિધમ', 'માહિતી', 'ડેટા', 'નિવેશ', 'ઇનપુટ', 'નિર્ગમ', 'આઉટપુટ', 'CPU', 'મેમરી', 'સ્ટોરેજ', 'ડિસ્ક', 'ઇન્ટરનેટ', 'નેટવર્ક', 'વેબ', 'વેબસાઇટ', 'સર્વર', 'ક્લાયન્ટ', 'DNS', 'ઇ-મેઇલ', 'કૃત્રિમ બુદ્ધિમત્તા', 'ચેટબોટ', 'મશીન લર્નિંગ', 'ડેટાબેઇઝ', 'દ્વિઅંકી'], 'wikipedia': ['કમ્પ્યુટર', 'computer', 'software', 'hardware', 'program', 'programming', 'algorithm', 'data', 'database', 'memory', 'processor', 'CPU', 'internet', 'network', 'web', 'server', 'browser', 'email', 'ઇ-મેઇલ', 'AI', 'કૃત્રિમ બુદ્ધિમત્તા', 'machine learning', 'deep learning', 'ChatGPT', 'OpenAI', 'chatbot', 'information technology', 'IT', 'code']}, 'Engineering & Technology': {'visvakosh': ['ઇજનેરી', 'યંત્ર', 'સાધન', 'ડિઝાઇન', 'ઇલેકટ્રોનિક્સ', 'ઇલેક્ટ્રોનિક', 'વિદ્યુત', 'પરિપથ', 'ટ્રાન્ઝિસ્ટર', 'અર્ધવાહક', 'IC', 'માઇક્રોવેવ', 'તરંગ', 'આવૃત્તિ', 'રેડિયો', 'સિગ્નલ', 'યાન', 'યાન-નયન', 'કૉકપિટ', 'મોટર', 'વાહન', 'ઑટોમોબાઇલ', 'ઉત્પાદન', 'બીબું', 'વૉશિંગ મશીન', 'સંદેશાવ્યવહાર', 'પ્રસારણ', 'ઉપગ્રહ', 'નિયંત્રણ'], 'wikipedia': ['engineering', 'technology', 'ઇજનેરી', 'યંત્ર', 'machine', 'device', 'system', 'design', 'electronic', 'electronics', 'electrical', 'circuit', 'semiconductor', 'transistor', 'microwave', 'frequency', 'signal', 'navigation', 'vehicle', 'automobile', 'cockpit', 'motor', 'manufacturing', 'production', 'communication', 'transmission', 'satellite', 'control system']}, 'Medical & Health Sciences': {'visvakosh': ['ઔષધ', 'ઔષધો', 'દવા', 'ફાર્મસી', 'રોગ', 'દર્દી', 'નિદાન', 'સારવાર', 'શરીર', 'શ્રવણ', 'શ્રવણસહાયક', 'કાન', 'વિકિરણ', 'કિરણોત્સર્ગી', 'વિકિરણશીલ', 'સમસ્થાનિક', 'રેડિયો સમસ્થાનિક', 'ગૅમા', 'થાઇરૉઇડ', 'ચિત્રણ', 'સ્કૅન', 'PET', 'સ્મૃતિ', 'સ્મૃતિલોપ', 'વિસ્મૃતિ', 'યાદ', 'મગજ', 'દીર્ઘકાલીન', 'અલ્પકાલીન', 'ઈજા'], 'wikipedia': ['medical', 'medicine', 'health', 'ઔષધ', 'દવા', 'રોગ', 'disease', 'patient', 'દર્દી', 'diagnosis', 'નિદાન', 'treatment', 'સારવાર', 'pharmacy', 'hearing', 'hearing aid', 'કાન', 'radioisotope', 'isotope', 'radiation', 'scan', 'imaging', 'PET', 'thyroid', 'memory', 'સ્મૃતિ', 'amnesia', 'સ્મૃતિલોપ', 'brain', 'મગજ']}, 'Education & Research': {'visvakosh': ['શિક્ષણ', 'પ્રાથમિક', 'શાળા', 'વિદ્યાર્થી', 'શિક્ષક', 'અધ્યાપક', 'અધ્યાપન', 'બોધન', 'અધ્યયન', 'અભ્યાસ', 'અભ્યાસક્રમ', 'પરીક્ષા', 'તાલીમ', 'વિશ્વવિદ્યાલય', 'ઉચ્ચ શિક્ષણ', 'અનુદાન', 'આયોગ', 'UGC', 'શિક્ષણનીતિ', 'સંશોધન', 'પ્રયોગશાળા', 'PRL', 'સંસ્થા', 'વ્યવસ્થાપન', 'IIM', 'ભૌતિકવિજ્ઞાન', 'યુનિવર્સિટી', 'શૈક્ષણિક'], 'wikipedia': ['education', 'શિક્ષણ', 'school', 'શાળા', 'student', 'વિદ્યાર્થી', 'teacher', 'શિક્ષક', 'teaching', 'બોધન', 'learning', 'અધ્યયન', 'curriculum', 'પાઠ્યક્રમ', 'university', 'વિશ્વવિદ્યાલય', 'higher education', 'research', 'સંશોધન', 'laboratory', 'પ્રયોગશાળા', 'UGC', 'grant', 'અનુદાન', 'commission', 'institute', 'PRL', 'IIM', 'academic']}, 'Language, Literature & Communication': {'visvakosh': ['લેખન', 'લખાણ', 'શબ્દ', 'ભાષા', 'લિપિ', 'અક્ષર', 'શૈલી', 'પ્રૂફ', 'પ્રૂફરીડિંગ', 'ભૂલો', 'સંપાદન', 'પ્રકાશન', 'કોશ', 'પર્યાયકોશ', 'પર્યાય', 'નિઘંટુ', 'દસ્તાવેજ', 'ડૉક્યુમેન્ટેશન', 'લેખ્યસૂચિ', 'લેખ્યસૂચીકરણ', 'ગ્રંથાલય', 'સુલેખન', 'લેખિની', 'કલમ', 'શાહી', 'કાગળ', 'પ્રતિલિપિ', 'અક્ષરમાળા'], 'wikipedia': ['language', 'ભાષા', 'literature', 'સાહિત્ય', 'writing', 'લેખન', 'text', 'લખાણ', 'word', 'શબ્દ', 'script', 'લિપિ', 'letter', 'અક્ષર', 'proofreading', 'પ્રૂફરીડિંગ', 'editing', 'સંપાદન', 'dictionary', 'શબ્દકોશ', 'thesaurus', 'પર્યાયકોશ', 'synonym', 'પર્યાય', 'documentation', 'દસ્તાવેજ', 'calligraphy', 'સુલેખન', 'publication', 'પ્રકાશન']}, 'Science, Industry & Society': {'visvakosh': ['વિજ્ઞાન', 'ઔદ્યોગિક', 'ઉદ્યોગ', 'વિકાસ', 'ઉત્પાદન', 'સેવા-ઉદ્યોગ', 'આંકડાશાસ્ત્ર', 'આંકડા', 'આંકડાશાસ્ત્રીય', 'નમૂના', 'પ્રમાણ', 'હીરા', 'હીરો', 'હીરાઉદ્યોગ', 'કૅરેટ', 'ખાણ', 'કિમ્બરલાઇટ', 'કાર્બન', 'વૃદ્ધિ', 'જનસંખ્યા', 'સંસાધન', 'પર્યાવરણ', 'પગરખાં', 'ચામડું', 'હવામાન', 'વાતાવરણ', 'તાપમાન', 'દબાણ', 'ભેજ', 'વરસાદ', 'પવન', 'ચક્રવાત', 'આગાહી'], 'wikipedia': ['science', 'વિજ્ઞાન', 'industry', 'ઉદ્યોગ', 'industrial', 'ઔદ્યોગિક', 'development', 'વિકાસ', 'statistics', 'આંકડાશાસ્ત્ર', 'statistical', 'service industry', 'diamond', 'હીરા', 'carat', 'કૅરેટ', 'mine', 'ખાણ', 'growth', 'વૃદ્ધિ', 'population', 'જનસંખ્યા', 'resources', 'environment', 'પર્યાવરણ', 'weather', 'હવામાન', 'temperature', 'તાપમાન', 'rainfall', 'વરસાદ', 'climate', 'forecast']}}
-
-STYLE_FEATURE_NAMES = ['word_count', 'log_word_count', 'char_count', 'log_char_count', 'sentence_count', 'avg_word_length', 'avg_sentence_length', 'std_sentence_length', 'max_sentence_length', 'min_sentence_length', 'type_token_ratio', 'hapax_ratio', 'v_markers_per_1000', 'w_markers_per_1000', 'marker_diff_per_1000', 'marker_ratio', 'passive_per_1000', 'english_char_ratio', 'gujarati_char_ratio', 'script_ratio', 'colon_per_1000', 'comma_per_1000', 'paren_per_1000', 'space_comma_per_1000', 'hyphen_per_1000', 'danda_per_1000', 'citation_count', 'wiki_heading_count', 'colon_in_first_200', 'def_in_first_200', 'cnt_તથા', 'cnt_વળી', 'cnt_કહેવાય_છે', 'cnt_એટલે', 'cnt_કરાય_છે', 'cnt_શામેલ', 'cnt_દ્વારા', 'cnt_સક્ષમ', 'cnt_ઉલ્લેખ', 'cnt_કરવામાં_આવે_છે', 'translit_style_ratio']
-
-CATEGORY_KEYWORD_FEATURE_NAMES: List[str] = []
-
-for _cat in CATEGORIES:
-    CATEGORY_KEYWORD_FEATURE_NAMES.extend([f'catkw::{_cat}::visvakosh_per_1000', f'catkw::{_cat}::wikipedia_per_1000', f'catkw::{_cat}::total_per_1000'])
-
-VISVAKOSH_STYLE_MARKERS = ['તથા', 'વળી', 'આથી', 'ગણાય', 'પ્રચલિત', 'આવાં', 'કેટલાંક', 'અલબત્ત', 'તદુપરાંત', 'દા.ત.', 'જુઓ', 'એટલે કે', 'કહેવાય છે', 'દા. ત.', 'તેમજ', 'ઉપરાંત', 'વિશેષ', 'અત્રે', 'તેવી જ રીતે', 'એટલે', 'કહેવાય', 'કરાય છે', 'થાય છે', 'ઓળખાય છે', 'ગણાય છે']
-
-WIKIPEDIA_STYLE_MARKERS = ['શામેલ', 'ઘણીવાર', 'કોઈપણ', 'વ્યાખ્યાયિત', 'ઉદાહરણ તરીકે', 'મોડેલ', 'સોફ્ટવેર', 'મુખ્ય લેખ', 'આ પણ જુઓ', 'જો કે', 'દ્વારા', 'સંદર્ભ', 'બાહ્ય કડીઓ', 'સ્રોત', 'ટીકા', 'વિવાદ', 'સક્ષમ', 'સમાવેશ', 'ઉલ્લેખ', 'પ્રોગ્રામ', 'ક્લસ્ટર', 'કરવામાં આવે છે', 'આપવામાં આવે છે', 'બનાવવામાં આવે છે', 'માનવામાં આવે છે']
-
-VISVAKOSH_PASSIVE = ['ગણાય છે', 'કરાય છે', 'કહેવાય છે', 'થાય છે', 'ઓળખાય છે']
-
-WIKIPEDIA_PASSIVE = ['કરવામાં આવે છે', 'આપવામાં આવે છે', 'બનાવવામાં આવે છે', 'માનવામાં આવે છે', 'કરવામાં આવ્યા હતા', 'કરવામાં આવ્યું હતું']
-
-DEFINITION_MARKERS = ['એટલે', 'કહેવાય', 'ગણાય', 'રૂપે ઓળખાય', 'એટલે કે']
-
-TRADITIONAL_TRANSLIT = ['ૉ', 'ૅ', 'ઑ', 'ઍ']
-
-MODERN_TRANSLIT = ['ો', 'ે', 'ૈ']
-
-WIKI_HEADINGS = ['મુખ્ય લેખ', 'આ પણ જુઓ', 'સંદર્ભ', 'બાહ્ય કડીઓ', 'બાહ્ય લિંક્સ', 'વધુ વાંચન', 'નોંધ', 'ટીકા', 'જીવન', 'કારકિર્દી', 'ઇતિહાસ']
-
-WORD_RE = re.compile('[\\u0A80-\\u0AFF]+|[A-Za-z]+|[0-9]+')
-
-GUJ_RE = re.compile('[\\u0A80-\\u0AFF]')
-
-ENG_RE = re.compile('[A-Za-z]')
-
-def tokenize_words(text: str) -> List[str]:
-    return WORD_RE.findall(text or '')
-
-def tokenize_sentences(text: str) -> List[str]:
-    if not text:
-        return []
-    text = text.replace('।', '.')
-    parts = re.split('(?<=[.!?])\\s+|\\n+', text)
-    return [s.strip() for s in parts if s.strip() and len(s.strip()) > 2]
-
-def _count_markers(text: str, markers: List[str]) -> int:
-    return int(sum((text.count(m) for m in markers if m)))
-
-def extract_41_style_features(text: str) -> Dict[str, float]:
-    text = '' if text is None else str(text)
-    words = tokenize_words(text)
-    sentences = tokenize_sentences(text)
-    wc = max(len(words), 1)
-    cc = max(len(text), 1)
-    sentence_lengths = [len(tokenize_words(s)) for s in sentences]
-    sentence_lengths = [x for x in sentence_lengths if x > 0]
-    if words:
-        avg_word_len = float(np.mean([len(w) for w in words]))
-        uniq = set(words)
-        ttr = len(uniq) / len(words)
-        freq = Counter(words)
-        hapax = sum((1 for _, c in freq.items() if c == 1))
-        hapax_ratio = hapax / max(len(uniq), 1)
-    else:
-        avg_word_len = ttr = hapax_ratio = 0.0
-    if sentence_lengths:
-        avg_sl = float(np.mean(sentence_lengths))
-        std_sl = float(np.std(sentence_lengths)) if len(sentence_lengths) > 1 else 0.0
-        max_sl = float(max(sentence_lengths))
-        min_sl = float(min(sentence_lengths))
-    else:
-        avg_sl = std_sl = max_sl = min_sl = 0.0
-    v_markers = _count_markers(text, VISVAKOSH_STYLE_MARKERS)
-    w_markers = _count_markers(text, WIKIPEDIA_STYLE_MARKERS)
-    total_markers = v_markers + w_markers
-    passive = _count_markers(text, VISVAKOSH_PASSIVE + WIKIPEDIA_PASSIVE)
-    eng_chars = len(ENG_RE.findall(text))
-    guj_chars = len(GUJ_RE.findall(text))
-    citations = len(re.findall('\\[\\s*\\d+(?:\\s*[-–,]\\s*\\d+)*\\s*\\]', text))
-    wiki_heading_count = sum((1 for h in WIKI_HEADINGS if h in text))
-    first_200 = text[:200]
-    trad = sum((text.count(x) for x in TRADITIONAL_TRANSLIT))
-    modern = sum((text.count(x) for x in MODERN_TRANSLIT))
-    translit_ratio = trad / (trad + modern) if trad + modern > 0 else 0.5
-    feats = {'word_count': float(len(words)), 'log_word_count': float(np.log1p(len(words))), 'char_count': float(len(text)), 'log_char_count': float(np.log1p(len(text))), 'sentence_count': float(len(sentences)), 'avg_word_length': avg_word_len, 'avg_sentence_length': avg_sl, 'std_sentence_length': std_sl, 'max_sentence_length': max_sl, 'min_sentence_length': min_sl, 'type_token_ratio': float(ttr), 'hapax_ratio': float(hapax_ratio), 'v_markers_per_1000': 1000.0 * v_markers / wc, 'w_markers_per_1000': 1000.0 * w_markers / wc, 'marker_diff_per_1000': 1000.0 * (v_markers - w_markers) / wc, 'marker_ratio': v_markers / total_markers if total_markers > 0 else 0.5, 'passive_per_1000': 1000.0 * passive / wc, 'english_char_ratio': eng_chars / cc, 'gujarati_char_ratio': guj_chars / cc, 'script_ratio': guj_chars / max(guj_chars + eng_chars, 1), 'colon_per_1000': 1000.0 * text.count(':') / wc, 'comma_per_1000': 1000.0 * text.count(',') / wc, 'paren_per_1000': 1000.0 * (text.count('(') + text.count(')')) / wc, 'space_comma_per_1000': 1000.0 * text.count(' ,') / wc, 'hyphen_per_1000': 1000.0 * text.count('-') / wc, 'danda_per_1000': 1000.0 * text.count('।') / wc, 'citation_count': float(citations), 'wiki_heading_count': float(wiki_heading_count), 'colon_in_first_200': float(':' in first_200), 'def_in_first_200': float(any((m in first_200 for m in DEFINITION_MARKERS))), 'cnt_તથા': float(text.count('તથા')), 'cnt_વળી': float(text.count('વળી')), 'cnt_કહેવાય_છે': float(text.count('કહેવાય છે')), 'cnt_એટલે': float(text.count('એટલે')), 'cnt_કરાય_છે': float(text.count('કરાય છે')), 'cnt_શામેલ': float(text.count('શામેલ')), 'cnt_દ્વારા': float(text.count('દ્વારા')), 'cnt_સક્ષમ': float(text.count('સક્ષમ')), 'cnt_ઉલ્લેખ': float(text.count('ઉલ્લેખ')), 'cnt_કરવામાં_આવે_છે': float(text.count('કરવામાં આવે છે')), 'translit_style_ratio': float(translit_ratio)}
-    return {name: float(feats[name]) for name in STYLE_FEATURE_NAMES}
-
-CATEGORY_KEYWORD_REGEX = {cat: {side: re.compile('|'.join(re.escape(k) for k in sorted(set(words), key=len, reverse=True)), re.IGNORECASE) for side,words in sets.items()} for cat,sets in CATEGORY_KEYWORDS.items()}
-
-def extract_category_keyword_features(text: str) -> Dict[str, float]:
-    text = '' if text is None else str(text)
-    wc = max(len(tokenize_words(text)), 1)
-    out: Dict[str, float] = {}
-    for cat in CATEGORIES:
-        vrx = CATEGORY_KEYWORD_REGEX[cat]['visvakosh']
-        wrx = CATEGORY_KEYWORD_REGEX[cat]['wikipedia']
-        v = sum((1 for _ in vrx.finditer(text))) if vrx is not None else 0
-        w = sum((1 for _ in wrx.finditer(text))) if wrx is not None else 0
-        out[f'catkw::{cat}::visvakosh_per_1000'] = 1000.0 * v / wc
-        out[f'catkw::{cat}::wikipedia_per_1000'] = 1000.0 * w / wc
-        out[f'catkw::{cat}::total_per_1000'] = 1000.0 * (v + w) / wc
-    return out
-
-def raw_feature_lookup(text: str) -> Dict[str, float]:
-    style = extract_41_style_features(text)
-    cat = extract_category_keyword_features(text)
-    out = {f'style::{k}': v for k, v in style.items()}
-    out.update(cat)
-    return out
-
-def transform_text(text: str, artifacts: Dict[str, Any]):
-    style_names = artifacts.get('style_feature_names', STYLE_FEATURE_NAMES)
-    cat_names = artifacts.get('category_keyword_feature_names', CATEGORY_KEYWORD_FEATURE_NAMES)
-    sf = extract_41_style_features(text)
-    cf = extract_category_keyword_features(text)
-    s = np.asarray([[float(sf.get(k, 0.0)) for k in style_names]], dtype=np.float64)
-    c = np.asarray([[float(cf.get(k, 0.0)) for k in cat_names]], dtype=np.float64)
-    s_scaled = artifacts['style_scaler'].transform(s)
-    c_scaled = artifacts['catkw_scaler'].transform(c)
-    w = artifacts['word_tfidf'].transform([text])
-    ch = artifacts['char_tfidf'].transform([text])
-    return hstack([csr_matrix(s_scaled), csr_matrix(c_scaled), w, ch]).tocsr()
-
-def select_model_input(bundle: Dict[str, Any], x_full):
-    if bundle.get('feature_view') == 'handcrafted_62':
-        n = int(bundle.get('style_feature_count', 41)) + len(bundle.get('category_keyword_feature_names', CATEGORY_KEYWORD_FEATURE_NAMES))
-        return x_full[:, :n]
-    return x_full
-
-def rule_based_source(text: str) -> Dict[str, Any]:
-    f = extract_41_style_features(text)
-    v = 0.0
-    w = 0.0
-    rows = []
-
-    def add(side: str, points: float, rule: str, observed: str):
-        nonlocal v, w
-        if side == 'Visvakosh':
-            v += points
-        else:
-            w += points
-        rows.append({'Source': side, 'Points': points, 'Rule': rule, 'Observed': observed})
-    if f['colon_in_first_200']:
-        add('Visvakosh', 2, 'Definition-first / term : explanation opening', 'colon in first 200 characters')
-    if f['def_in_first_200']:
-        add('Visvakosh', 2, 'Definition marker near the beginning', 'એટલે / કહેવાય / ગણાય present early')
-    md = f['marker_diff_per_1000']
-    if md >= 5:
-        add('Visvakosh', 2, 'Visvakosh-style markers dominate', f'difference = {md:.2f}/1000')
-    elif md <= -5:
-        add('Wikipedia', 2, 'Wikipedia-style markers dominate', f'difference = {md:.2f}/1000')
-    if f['citation_count'] >= 1:
-        add('Wikipedia', 2, 'Bracketed numeric citations', f"{int(f['citation_count'])} citation(s)")
-    if f['wiki_heading_count'] >= 1:
-        add('Wikipedia', 2, 'Wikipedia-like section/navigation terms', f"{int(f['wiki_heading_count'])} heading marker(s)")
-    if f['cnt_કરવામાં_આવે_છે'] >= 1:
-        add('Wikipedia', 1.5, 'Long passive construction', f"કરવામાં આવે છે × {int(f['cnt_કરવામાં_આવે_છે'])}")
-    if f['cnt_કરાય_છે'] + f['cnt_કહેવાય_છે'] >= 1:
-        add('Visvakosh', 1.5, 'Concise passive/definitional construction', f"કરાય છે + કહેવાય છે = {int(f['cnt_કરાય_છે'] + f['cnt_કહેવાય_છે'])}")
-    if f['english_char_ratio'] >= 0.06:
-        add('Wikipedia', 1, 'High English-script share', f"{f['english_char_ratio']:.1%}")
-    elif f['english_char_ratio'] <= 0.015:
-        add('Visvakosh', 0.5, 'Very low English-script share', f"{f['english_char_ratio']:.1%}")
-    if f['translit_style_ratio'] >= 0.3:
-        add('Visvakosh', 1, 'Traditional Gujarati transliteration marks relatively strong', f"ratio={f['translit_style_ratio']:.3f}")
-    if f['space_comma_per_1000'] >= 3:
-        add('Wikipedia', 1, 'Space-before-comma pattern', f"{f['space_comma_per_1000']:.2f}/1000")
-    total = v + w
-    if total == 0:
-        pred = 'Uncertain'
-        conf = 0.5
-    else:
-        pred = 'Visvakosh' if v >= w else 'Wikipedia'
-        conf = max(v, w) / total
-    return {'prediction': pred, 'confidence': float(conf), 'visvakosh_score': float(v), 'wikipedia_score': float(w), 'rules': rows, 'features': f}
-
-# --- EMBEDDED REVERSE ENGINE ---
-"""Constrained style-search using original analyzer, not an LLM generator."""
-import re
-from collections import Counter
-from functools import lru_cache
-from pathlib import Path
-
-def analyze(text):
-    a=rule_based_source(text)
-    f=extract_41_style_features(text)
-    return {'prediction':a['prediction'],'v_points':a['visvakosh_score'], 'w_points':a['wikipedia_score'],
-            'margin':a['visvakosh_score']-a['wikipedia_score'], 'v_markers_per_1000':f['v_markers_per_1000'],
-            'w_markers_per_1000':f['w_markers_per_1000'], 'wiki_headings':f['wiki_heading_count'],
-            'citations':f['citation_count'], 'style_features':f}
-
-def _protected(before,after):
-    nums=r'[0-9૦-૯]+(?:[.,][0-9૦-૯]+)*'
-    if Counter(re.findall(nums,before))!=Counter(re.findall(nums,after)):return False
-    for token in ('નથી','નહીં','નહિ','વિના','અશક્ય'):
-        if len(re.findall(r'(?<!\S)'+token+r'(?!\S)',before))!=len(re.findall(r'(?<!\S)'+token+r'(?!\S)',after)):return False
-    acronyms=r'(?<![A-Za-z])[A-Z]{2,}(?![A-Za-z])'
-    return Counter(re.findall(acronyms,before))==Counter(re.findall(acronyms,after))
-
-def reverse_edit(base, rules, level='context', max_passes=3):
-    allowed={'conservative'} if level=='conservative' else {'conservative','context'} if level=='context' else {'conservative','context','review'}
-    # Prefer improvement under the ORIGINAL supplied rule-based source checker.
-    # This checker is heuristic, and improving it is not proof of authentic style.
-    current=base; log=[]; used_spans=set()
-    selected=[r for r in rules if r[3] in allowed and r[1]!=r[2]]
-    # Non-overlapping local edits; no cascading replacements.
-    matches=[]
-    for rid,old,new,risk,cat in selected:
-        for m in re.finditer(re.escape(old),base):
-            matches.append((m.start(),m.end(),rid,old,new,risk,cat))
-    matches.sort(key=lambda x:(x[0],-(x[1]-x[0]),x[2]))
-    chosen=[];last=-1
-    for m in matches:
-        if m[0]>=last:chosen.append(m);last=m[1]
-    # Build text by keeping original spans and selecting changes by measured gain.
-    pieces=[];cursor=0; accepted=[]
-    for start,end,rid,old,new,risk,cat in chosen:
-        pieces.append(base[cursor:start]);cursor=end
-        prior=''.join(pieces)+base[start:]
-        candidate=''.join(pieces)+new+base[end:]
-        before=analyze(prior);after=analyze(candidate)
-        # Never accept a change that lowers the source-checker's margin.
-        if _protected(prior,candidate) and after['margin']>before['margin']+1e-9:
-            pieces.append(new)
-            accepted.append({'id':rid,'before':old,'after':new,'risk':risk,'category':cat,'margin_gain':round(after['margin']-before['margin'],3),'decision':'accepted'})
-        else:
-            pieces.append(old)
-            log.append({'id':rid,'before':old,'after':new,'risk':risk,'category':cat,'margin_gain':round(after['margin']-before['margin'],3),'decision':'rejected: no positive style gain or protection failed'})
-    pieces.append(base[cursor:]);result=''.join(pieces)
-    # If a substitution is neutral under checker, preserve it rather than claiming improvement.
-    return result,accepted,log
-
-
-# The supplied checker is a heuristic. This alias prevents the old undefined-name crash.
-analyzer_score = analyze
-
-# High-precision patterns for the checker’s observed Wikipedia-style constructions.
-# These preserve the grammatical predicate rather than deleting the agent indiscriminately.
-CHECKER_TARGETED_RULES = [
- ('A201','તરીકે ઓળખવામાં આવે છે','તરીકે ઓળખાય છે','conservative','Definition'),
- ('A202','કહેવામા આવે છે','કહેવાય છે','conservative','Definition'),
- ('A203','કહેવામાં આવે છે','કહેવાય છે','conservative','Definition'),
- ('A204','ગણવામાં આવે છે','ગણાય છે','context','Definition'),
- ('A205','ઉદાહરણ તરીકે','દાખલા તરીકે','conservative','Explanation'),
- ('A206','આ બાબત વિશે','આ અંગે','conservative','Formal'),
- ('A207','આ વિશે','આ અંગે','conservative','Formal'),
- ('A208','તેના પછી','ત્યારબાદ','conservative','Chronology'),
- ('A209','શરૂઆતમાં','આરંભમાં','conservative','Chronology'),
- ('A210','માહિતી મળી શકે છે','માહિતી પ્રાપ્ત થઈ શકે છે','conservative','Formal'),
- ('A211','આપવામાં આવે છે','અપાય છે','context','Concision'),
- ('A212','બનાવવામાં આવે છે','બનાવાય છે','context','Concision'),
- ('A213','માનવામાં આવે છે','મનાય છે','context','Concision'),
- ('A214','કરવામાં આવે છે','કરાય છે','review','Concision'),
- ('A215','આ ઉપરાંત પણ','આ ઉપરાંત','conservative','Concision'),
- ('A216','આ સિવાય','આ ઉપરાંત','context','Formal'),
- ('A217','જાણકારી','માહિતી','context','Formal'),
- ('A218','ડોક્યુમેન્ટેશન','દસ્તાવેજીકરણ','context','Terminology'),
- ('A219','ક્લાસિફિકેશન','વર્ગીકરણ','context','Terminology'),
- ('A220','સોફ્ટવેર','સૉફ્ટવૅર','context','Terminology'),
-]
-
-def optimize_rule_edits(source, rules, level='context'):
-    """Deterministic, non-cascading edits with full-text score checks.
-
-    Does not invent words to game the classifier. May correctly return Wikipedia.
-    """
-    allowed = {'conservative'} if level=='conservative' else ({'conservative','context'} if level=='context' else {'conservative','context','review'})
-    candidates=[]
-    for rid,old,new,risk,cat in rules:
-        if risk not in allowed or not old or old==new: continue
-        for match in re.finditer(re.escape(old),source):
-            candidates.append((match.start(),match.end(),rid,old,new,risk,cat))
-    candidates.sort(key=lambda x:(x[0],-(x[1]-x[0]),x[2]))
-    nonoverlap=[];end_at=-1
-    for candidate in candidates:
-        if candidate[0]>=end_at:
-            nonoverlap.append(candidate);end_at=candidate[1]
-    # Build each trial from original spans, never rewrite already produced text.
-    selected=set(); logs=[]; rejected=[]
-    def assemble(ids):
-        out=[];pos=0
-        for i,(start,end,rid,old,new,risk,cat) in enumerate(nonoverlap):
-            out.append(source[pos:start]);out.append(new if i in ids else source[start:end]);pos=end
-        out.append(source[pos:]);return ''.join(out)
-    baseline=analyze(source)
-    current_margin=baseline['margin']
-    # Test individual replacements against the FULL paragraph, not a fragment.
-    for i,(start,end,rid,old,new,risk,cat) in enumerate(nonoverlap):
-        trial=assemble(selected|{i})
-        score=analyze(trial)
-        if _protected(source,trial) and score['margin']>current_margin+1e-9:
-            selected.add(i)
-            logs.append({'id':rid,'before':old,'after':new,'risk':risk,'category':cat,'margin_gain':round(score['margin']-current_margin,3)})
-            current_margin=score['margin']
-        else:
-            rejected.append({'id':rid,'before':old,'after':new,'reason':'No verified heuristic gain, or preservation guard failed'})
-    result=assemble(selected)
-    return result,logs,rejected
-
-# --- ORIGINAL STREAMLIT UI ---
 """Gujarati Vishwakosh research showcase: static, no model loading/training."""
 import re
 import unicodedata
@@ -331,7 +5,6 @@ from collections import Counter
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
-from pathlib import Path
 
 st.set_page_config(page_title='Gujarati Vishwakosh | SLM Research',page_icon='📚',layout='wide',initial_sidebar_state='expanded')
 st.markdown('''<style>
@@ -536,10 +209,6 @@ EXTRA_RULES = [
     ('R140', 'તેના આધારે', 'તેને આધારે', 'context', 'Register'),
 ]
 RULES.extend(EXTRA_RULES)
-# Additional user-supplied candidate vocabulary; opt-in according to review level.
-MORE_RULES = [('V101', 'આ વિશે', 'આ અંગે', 'conservative', 'Lexicon'), ('V102', 'તેના વિશે', 'તે અંગે', 'conservative', 'Lexicon'), ('V103', 'આ બાબતમાં', 'આ સંદર્ભમાં', 'review', 'Lexicon'), ('V104', 'સંબંધ ધરાવે છે', 'સંબંધિત છે', 'review', 'Lexicon'), ('V105', 'તેના કારણે', 'તેને પરિણામે', 'review', 'Lexicon'), ('V106', 'તેના પછી', 'ત્યારબાદ', 'conservative', 'Lexicon'), ('V107', 'તે પહેલાં', 'અગાઉ', 'conservative', 'Lexicon'), ('V108', 'તે સમય દરમિયાન', 'તે સમયગાળામાં', 'review', 'Lexicon'), ('V109', 'શરૂઆતમાં', 'આરંભમાં', 'conservative', 'Lexicon'), ('V110', 'શરૂઆત થઈ', 'આરંભ થયો', 'conservative', 'Lexicon'), ('V111', 'અંતમાં', 'અંતે', 'conservative', 'Lexicon'), ('V112', 'આ સિવાય', 'આ ઉપરાંત', 'conservative', 'Lexicon'), ('V113', 'એક સાથે', 'એકસાથે', 'conservative', 'Lexicon'), ('V114', 'અલગ અલગ', 'જુદાં જુદાં', 'review', 'Lexicon'), ('V115', 'વિવિધ પ્રકારનાં', 'વિવિધ', 'review', 'Lexicon'), ('V116', 'ખૂબ વધારે', 'અત્યધિક', 'review', 'Lexicon'), ('V117', 'મુખ્ય ભાગ', 'મુખ્ય અંગ', 'review', 'Lexicon'), ('V118', 'નાનો ભાગ', 'લઘુ ભાગ', 'review', 'Lexicon'), ('V119', 'ખાસ લક્ષણ', 'વિશિષ્ટ લક્ષણ', 'context', 'Lexicon'), ('V120', 'તેની વિશેષતા', 'તેની લાક્ષણિકતા', 'context', 'Lexicon'), ('V121', 'ઉપયોગી છે', 'ઉપયોગિતા ધરાવે છે', 'review', 'Lexicon'), ('V122', 'ઉપયોગ થાય છે', 'વપરાય છે', 'review', 'Lexicon'), ('V123', 'ઉપયોગ કરવામાં આવે છે', 'વપરાય છે', 'review', 'Lexicon'), ('V124', 'માહિતી આપે છે', 'માહિતી પૂરી પાડે છે', 'review', 'Lexicon'), ('V125', 'માહિતી મળે છે', 'માહિતી પ્રાપ્ત થાય છે', 'conservative', 'Lexicon'), ('V126', 'જાણકારી', 'માહિતી', 'conservative', 'Lexicon'), ('V127', 'વિગતવાર માહિતી', 'વિસ્તૃત માહિતી', 'review', 'Lexicon'), ('V128', 'ઉદાહરણ તરીકે', 'દાખલા તરીકે', 'conservative', 'Lexicon'), ('V129', 'આનું ઉદાહરણ', 'તેનું દૃષ્ટાંત', 'review', 'Lexicon'), ('V130', 'જોવા મળે છે', 'જણાય છે', 'review', 'Lexicon'), ('V131', 'મેમરી', 'સ્મૃતિ', 'review', 'Terminology'), ('V132', 'બાયનરી', 'દ્વિઅંકી', 'review', 'Terminology'), ('V133', 'સેન્ટ્રલ પ્રોસેસિંગ યુનિટ', 'મધ્યસ્થ પ્રક્રિયા એકમ', 'review', 'Terminology'), ('V134', 'ટ્યુરિંગ એવોર્ડ', 'ટ્યુરિંગ પુરસ્કાર', 'review', 'Terminology'), ('V135', 'ઇન્ફોર્મેશન', 'માહિતી', 'conservative', 'Terminology'), ('V136', 'ડોક્યુમેન્ટેશન', 'દસ્તાવેજીકરણ', 'review', 'Terminology'), ('V137', 'કોમ્યુનિકેશન', 'સંચાર', 'review', 'Terminology'), ('V138', 'ટેક્નોલોજી', 'પ્રૌદ્યોગિકી', 'review', 'Terminology'), ('V139', 'સાયન્ટિફિક', 'વૈજ્ઞાનિક', 'conservative', 'Terminology'), ('V140', 'રિસર્ચ', 'સંશોધન', 'conservative', 'Terminology'), ('V141', 'એક્સપેરિમેન્ટ', 'પ્રયોગ', 'conservative', 'Terminology'), ('V142', 'એનાલિસિસ', 'વિશ્લેષણ', 'conservative', 'Terminology'), ('V143', 'પ્રોસેસ', 'પ્રક્રિયા', 'conservative', 'Terminology'), ('V144', 'સિસ્ટમ', 'પ્રણાલી', 'review', 'Terminology'), ('V145', 'સ્ટ્રક્ચર', 'સંરચના', 'review', 'Terminology'), ('V146', 'ફંક્શન', 'કાર્ય', 'review', 'Terminology'), ('V147', 'પ્રોપર્ટી', 'ગુણધર્મ', 'review', 'Terminology'), ('V148', 'કેરેક્ટરિસ્ટિક', 'લાક્ષણિકતા', 'review', 'Terminology'), ('V149', 'ક્લાસિફિકેશન', 'વર્ગીકરણ', 'conservative', 'Terminology'), ('V150', 'ડેવલપમેન્ટ', 'વિકાસ', 'conservative', 'Terminology'), ('V151', 'મેન્યુફેક્ચરિંગ', 'ઉત્પાદન', 'review', 'Terminology'), ('V152', 'ઇન્ડસ્ટ્રી', 'ઉદ્યોગ', 'conservative', 'Terminology'), ('V154', 'મિકેનિકલ', 'યાંત્રિક', 'conservative', 'Terminology'), ('V155', 'ઓટોમેટિક', 'સ્વયંસંચાલિત', 'conservative', 'Terminology'), ('V158', 'એલ્ગોરિધમ', 'કલનવિધિ', 'review', 'Terminology'), ('V159', 'આર્ટિફિશિયલ ઇન્ટેલિજન્સ', 'કૃત્રિમ બુદ્ધિમત્તા', 'conservative', 'Terminology')]
-RULES.extend(MORE_RULES)
-
 assert len({r[0] for r in RULES}) == len(RULES)
 
 
@@ -550,24 +219,14 @@ def edit_with_audit(source, remove_citations=True, normalize_spacing=True, risk_
     changes = [{'id':'FORMAT', 'before':'', 'after':'', 'count':1, 'risk':'format', 'note':x} for x in formatting]
     allowed = {'conservative'} if risk_level=='conservative' else {'conservative','context'} if risk_level=='context' else {'conservative','context','review'}
     enabled_ids = enabled_ids if enabled_ids is not None else {r[0] for r in RULES}
-    # Match against the original cleaned text once: replacements cannot cascade into
-    # further replacements, which previously caused unintended style drift.
-    eligible = [r for r in RULES if r[0] in enabled_ids and r[3] in allowed and r[1] != r[2]]
-    eligible.sort(key=lambda r: (-len(r[1]), r[0]))
-    mapping = {}
-    for rule in eligible:
-        mapping.setdefault(rule[1], rule)
-    if mapping:
-        pattern = re.compile('|'.join(re.escape(x) for x in mapping))
-        hit_counts = Counter()
-        def replace_match(m):
-            rule = mapping[m.group(0)]
-            hit_counts[rule[0]] += 1
-            return rule[2]
-        result = pattern.sub(replace_match, base)
-        for rid, old, new, risk, category in eligible:
-            if rid in hit_counts:
-                changes.append({'id':rid,'before':old,'after':new,'count':hit_counts[rid], 'risk':risk,'note':category})
+    # Longer matches first, preventing shorter matches from consuming more specific patterns.
+    for rid, old, new, risk, category in sorted(RULES, key=lambda r:(-len(r[1]),r[0])):
+        if rid not in enabled_ids or risk not in allowed or old == new:
+            continue
+        count = result.count(old)
+        if count:
+            result = result.replace(old,new)
+            changes.append({'id':rid,'before':old,'after':new,'count':count,'risk':risk,'note':category})
     issues=protected_audit(CITATION.sub("",source) if remove_citations else source,result)
     if issues:
         return base, [x for x in changes if x['id']=='FORMAT'], 'Protected-content check: '+', '.join(issues)+'; phrase substitutions reverted'
@@ -634,39 +293,28 @@ if page=='Overview':
 
 elif page=='Gujarati editor':
     st.markdown('<div class="hero"><h1>ગુજરાતી વિશ્વકોશ · સંપાદક</h1><p>Gujarati editorial refinement · inspect every change · preserve source facts</p></div>',unsafe_allow_html=True)
-    st.caption('વિશ્વકોશીય ભાષાશૈલી માટે સૂચિત શબ્દપ્રયોગો અને વાક્યરચના. દરેક ફેરફાર તપાસો; શબ્દસૂચિ પ્રમાણિત વિશ્વકોશ કોર્પસ પરથી ચકાસવાની બાકી છે.')
+    st.caption('Gujarati encyclopedic editing with auditable changes. Rules are candidates, not verified Vishwakosh quotations.')
     src=st.text_area('મૂળ ગુજરાતી લખાણ',value=EXAMPLE,height=210,key='editor_input')
     c1,c2,c3=st.columns([1,1,2])
     citation=c1.checkbox('Remove citations',True)
     spacing=c2.checkbox('Clean punctuation',True)
     level=c3.selectbox('Editorial mode',['Conservative','Context review','All candidates (review required)'],index=1)
     risk_level={'Conservative':'conservative','Context review':'context','All candidates (review required)':'all'}[level]
-    reverse_mode=True
-    st.caption('વિશ્લેષક આધારિત સંપાદન ચાલુ છે: માત્ર માપી શકાય તેવા સુધારા સ્વીકારવામાં આવે છે.')
     with st.expander('Editorial rules · select and inspect',expanded=False):
         groups=sorted(set(r[4] for r in RULES))
         group=st.selectbox('Category',['All']+groups)
         query=st.text_input('Search rule ID or Gujarati phrase')
         display=[r for r in RULES if (group=='All' or r[4]==group) and (not query or query.lower() in (' '.join(r)).lower())]
-        st.dataframe(pd.DataFrame(display + [r for r in CHECKER_TARGETED_RULES if (group=='All' or r[4]==group) and (not query or query.lower() in (' '.join(r)).lower())],columns=['ID','Original','Replacement','Review level','Category']),hide_index=True,use_container_width=True)
-        st.caption('Rules are candidate editorial preferences, not proof of Vishwakosh usage. Review-level rules can change meaning or technical terminology.')
-        st.download_button(f'Export {len(RULES)+len(CHECKER_TARGETED_RULES)}-rule catalog',pd.DataFrame(RULES + CHECKER_TARGETED_RULES,columns=['ID','Original','Replacement','Review level','Category']).to_csv(index=False).encode('utf-8-sig'),file_name='gujarati_editorial_rules.csv',mime='text/csv')
+        st.dataframe(pd.DataFrame(display,columns=['ID','Original','Replacement','Review level','Category']),hide_index=True,use_container_width=True)
+        st.caption('Conservative rules run by default. Other candidates are opt-in and may change agency, emphasis or meaning.')
+        st.download_button(f'Export {len(RULES)}-rule catalog',pd.DataFrame(RULES,columns=['ID','Original','Replacement','Review level','Category']).to_csv(index=False).encode('utf-8-sig'),file_name='gujarati_editorial_rules.csv',mime='text/csv')
     if 'conversion_result' not in st.session_state:
         st.session_state.conversion_result = None
     if st.button('✍️ Convert to Vishwakosh Gujarati · રૂપાંતર કરો', type='primary', use_container_width=True):
         if not src.strip():
             st.warning('કૃપા કરીને ગુજરાતી લખાણ દાખલ કરો.')
         else:
-            if reverse_mode:
-                cleaned, fmt = static_edit(src, citation, spacing)
-                edited_now, accepted, rejected = optimize_rule_edits(cleaned, RULES + CHECKER_TARGETED_RULES, risk_level)
-                changes_now=[{'id':'FORMAT','before':'','after':'','count':1,'risk':'format','note':x} for x in fmt]
-                changes_now += [{'id':x['id'],'before':x['before'],'after':x['after'],'count':1,'risk':x['risk'],'note':x['category']+'; analyzer gain '+str(x['margin_gain'])} for x in accepted]
-                warning_now=''
-                st.session_state.reverse_rejections=rejected
-            else:
-                edited_now, changes_now, warning_now = edit_with_audit(src, citation, spacing, risk_level)
-                st.session_state.reverse_rejections=[]
+            edited_now, changes_now, warning_now = edit_with_audit(src, citation, spacing, risk_level)
             st.session_state.conversion_result = (src, edited_now, changes_now, warning_now)
     if st.session_state.conversion_result is None:
         st.info('ઉપર તમારો ગુજરાતી ફકરો લખો અને **રૂપાંતર કરો** બટન દબાવો.')
@@ -693,26 +341,7 @@ elif page=='Gujarati editor':
     if any(x['risk']!='conservative' and x['risk']!='format' for x in changes):
         st.warning('Context-sensitive substitutions applied. Compare with the source before using the output.')
     st.download_button('Download edited text',edited.encode('utf-8'),file_name='gujarati_vishwakosh_edit.txt',mime='text/plain')
-    st.markdown('#### Reverse-engineered analyzer check')
-    before_an=analyzer_score(original); after_an=analyzer_score(edited)
-    d1,d2,d3=st.columns(3)
-    d1.metric('Original · heuristic',before_an['prediction'])
-    d2.metric('Edited · heuristic',after_an['prediction'])
-    d3.metric('Rule-based margin Δ',round(after_an['margin']-before_an['margin'],2))
-    if after_an['prediction'] != 'Visvakosh':
-        st.warning('હજુ વિશ્વકોશ શૈલી તરીકે વર્ગીકૃત થયું નથી. આ લખાણને પ્રમાણિત વિશ્વકોશ શૈલી કહેવું યોગ્ય નથી. વધારાની માનવીય સંપાદકીય સમીક્ષા જરૂરી છે.')
-    else:
-        st.info('વિશ્લેષક અનુસાર વિશ્વકોશ શૈલીનાં સંકેતો વધુ છે; આ પ્રમાણિત વિશ્વકોશ લખાણ હોવાનો પુરાવો નથી.')
-    st.dataframe(pd.DataFrame({'Original':{k:v for k,v in before_an.items() if k!='style_features'},'Edited':{k:v for k,v in after_an.items() if k!='style_features'}}),use_container_width=True)
-    with st.expander('All 41 original analyzer features'):
-        st.dataframe(pd.DataFrame({'Original':before_an['style_features'],'Edited':after_an['style_features']}),use_container_width=True)
-    if st.session_state.get('reverse_rejections'):
-        with st.expander('Rejected candidate substitutions'):
-            st.dataframe(pd.DataFrame(st.session_state.reverse_rejections),use_container_width=True)
-    st.caption('No model files are needed. This is a built-in heuristic check, not a trained 17-model vote.')
-    st.caption('Increasing analyzer margin is a diagnostic target, not a guarantee of human-authentic Vishwakosh style or factual equivalence.')
     st.markdown('#### Style diagnostics')
-    st.caption('Style markers are measured, not inserted artificially. A high marker count is not evidence of authentic editorial quality.')
     before_profile=style_profile(original)
     after_profile=style_profile(edited)
     st.dataframe(pd.DataFrame({'Before':before_profile,'After':after_profile}),use_container_width=True)
