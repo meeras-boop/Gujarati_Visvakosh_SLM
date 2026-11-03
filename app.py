@@ -209,6 +209,10 @@ EXTRA_RULES = [
     ('R140', 'તેના આધારે', 'તેને આધારે', 'context', 'Register'),
 ]
 RULES.extend(EXTRA_RULES)
+# Additional user-supplied candidate vocabulary; opt-in according to review level.
+MORE_RULES = [('V101', 'આ વિશે', 'આ અંગે', 'conservative', 'Lexicon'), ('V102', 'તેના વિશે', 'તે અંગે', 'conservative', 'Lexicon'), ('V103', 'આ બાબતમાં', 'આ સંદર્ભમાં', 'review', 'Lexicon'), ('V104', 'સંબંધ ધરાવે છે', 'સંબંધિત છે', 'review', 'Lexicon'), ('V105', 'તેના કારણે', 'તેને પરિણામે', 'review', 'Lexicon'), ('V106', 'તેના પછી', 'ત્યારબાદ', 'conservative', 'Lexicon'), ('V107', 'તે પહેલાં', 'અગાઉ', 'conservative', 'Lexicon'), ('V108', 'તે સમય દરમિયાન', 'તે સમયગાળામાં', 'review', 'Lexicon'), ('V109', 'શરૂઆતમાં', 'આરંભમાં', 'conservative', 'Lexicon'), ('V110', 'શરૂઆત થઈ', 'આરંભ થયો', 'conservative', 'Lexicon'), ('V111', 'અંતમાં', 'અંતે', 'conservative', 'Lexicon'), ('V112', 'આ સિવાય', 'આ ઉપરાંત', 'conservative', 'Lexicon'), ('V113', 'એક સાથે', 'એકસાથે', 'conservative', 'Lexicon'), ('V114', 'અલગ અલગ', 'જુદાં જુદાં', 'review', 'Lexicon'), ('V115', 'વિવિધ પ્રકારનાં', 'વિવિધ', 'review', 'Lexicon'), ('V116', 'ખૂબ વધારે', 'અત્યધિક', 'review', 'Lexicon'), ('V117', 'મુખ્ય ભાગ', 'મુખ્ય અંગ', 'review', 'Lexicon'), ('V118', 'નાનો ભાગ', 'લઘુ ભાગ', 'review', 'Lexicon'), ('V119', 'ખાસ લક્ષણ', 'વિશિષ્ટ લક્ષણ', 'context', 'Lexicon'), ('V120', 'તેની વિશેષતા', 'તેની લાક્ષણિકતા', 'context', 'Lexicon'), ('V121', 'ઉપયોગી છે', 'ઉપયોગિતા ધરાવે છે', 'review', 'Lexicon'), ('V122', 'ઉપયોગ થાય છે', 'વપરાય છે', 'review', 'Lexicon'), ('V123', 'ઉપયોગ કરવામાં આવે છે', 'વપરાય છે', 'review', 'Lexicon'), ('V124', 'માહિતી આપે છે', 'માહિતી પૂરી પાડે છે', 'review', 'Lexicon'), ('V125', 'માહિતી મળે છે', 'માહિતી પ્રાપ્ત થાય છે', 'conservative', 'Lexicon'), ('V126', 'જાણકારી', 'માહિતી', 'conservative', 'Lexicon'), ('V127', 'વિગતવાર માહિતી', 'વિસ્તૃત માહિતી', 'review', 'Lexicon'), ('V128', 'ઉદાહરણ તરીકે', 'દાખલા તરીકે', 'conservative', 'Lexicon'), ('V129', 'આનું ઉદાહરણ', 'તેનું દૃષ્ટાંત', 'review', 'Lexicon'), ('V130', 'જોવા મળે છે', 'જણાય છે', 'review', 'Lexicon'), ('V131', 'મેમરી', 'સ્મૃતિ', 'review', 'Terminology'), ('V132', 'બાયનરી', 'દ્વિઅંકી', 'review', 'Terminology'), ('V133', 'સેન્ટ્રલ પ્રોસેસિંગ યુનિટ', 'મધ્યસ્થ પ્રક્રિયા એકમ', 'review', 'Terminology'), ('V134', 'ટ્યુરિંગ એવોર્ડ', 'ટ્યુરિંગ પુરસ્કાર', 'review', 'Terminology'), ('V135', 'ઇન્ફોર્મેશન', 'માહિતી', 'conservative', 'Terminology'), ('V136', 'ડોક્યુમેન્ટેશન', 'દસ્તાવેજીકરણ', 'review', 'Terminology'), ('V137', 'કોમ્યુનિકેશન', 'સંચાર', 'review', 'Terminology'), ('V138', 'ટેક્નોલોજી', 'પ્રૌદ્યોગિકી', 'review', 'Terminology'), ('V139', 'સાયન્ટિફિક', 'વૈજ્ઞાનિક', 'conservative', 'Terminology'), ('V140', 'રિસર્ચ', 'સંશોધન', 'conservative', 'Terminology'), ('V141', 'એક્સપેરિમેન્ટ', 'પ્રયોગ', 'conservative', 'Terminology'), ('V142', 'એનાલિસિસ', 'વિશ્લેષણ', 'conservative', 'Terminology'), ('V143', 'પ્રોસેસ', 'પ્રક્રિયા', 'conservative', 'Terminology'), ('V144', 'સિસ્ટમ', 'પ્રણાલી', 'review', 'Terminology'), ('V145', 'સ્ટ્રક્ચર', 'સંરચના', 'review', 'Terminology'), ('V146', 'ફંક્શન', 'કાર્ય', 'review', 'Terminology'), ('V147', 'પ્રોપર્ટી', 'ગુણધર્મ', 'review', 'Terminology'), ('V148', 'કેરેક્ટરિસ્ટિક', 'લાક્ષણિકતા', 'review', 'Terminology'), ('V149', 'ક્લાસિફિકેશન', 'વર્ગીકરણ', 'conservative', 'Terminology'), ('V150', 'ડેવલપમેન્ટ', 'વિકાસ', 'conservative', 'Terminology'), ('V151', 'મેન્યુફેક્ચરિંગ', 'ઉત્પાદન', 'review', 'Terminology'), ('V152', 'ઇન્ડસ્ટ્રી', 'ઉદ્યોગ', 'conservative', 'Terminology'), ('V154', 'મિકેનિકલ', 'યાંત્રિક', 'conservative', 'Terminology'), ('V155', 'ઓટોમેટિક', 'સ્વયંસંચાલિત', 'conservative', 'Terminology'), ('V158', 'એલ્ગોરિધમ', 'કલનવિધિ', 'review', 'Terminology'), ('V159', 'આર્ટિફિશિયલ ઇન્ટેલિજન્સ', 'કૃત્રિમ બુદ્ધિમત્તા', 'conservative', 'Terminology')]
+RULES.extend(MORE_RULES)
+
 assert len({r[0] for r in RULES}) == len(RULES)
 
 
@@ -219,14 +223,24 @@ def edit_with_audit(source, remove_citations=True, normalize_spacing=True, risk_
     changes = [{'id':'FORMAT', 'before':'', 'after':'', 'count':1, 'risk':'format', 'note':x} for x in formatting]
     allowed = {'conservative'} if risk_level=='conservative' else {'conservative','context'} if risk_level=='context' else {'conservative','context','review'}
     enabled_ids = enabled_ids if enabled_ids is not None else {r[0] for r in RULES}
-    # Longer matches first, preventing shorter matches from consuming more specific patterns.
-    for rid, old, new, risk, category in sorted(RULES, key=lambda r:(-len(r[1]),r[0])):
-        if rid not in enabled_ids or risk not in allowed or old == new:
-            continue
-        count = result.count(old)
-        if count:
-            result = result.replace(old,new)
-            changes.append({'id':rid,'before':old,'after':new,'count':count,'risk':risk,'note':category})
+    # Match against the original cleaned text once: replacements cannot cascade into
+    # further replacements, which previously caused unintended style drift.
+    eligible = [r for r in RULES if r[0] in enabled_ids and r[3] in allowed and r[1] != r[2]]
+    eligible.sort(key=lambda r: (-len(r[1]), r[0]))
+    mapping = {}
+    for rule in eligible:
+        mapping.setdefault(rule[1], rule)
+    if mapping:
+        pattern = re.compile('|'.join(re.escape(x) for x in mapping))
+        hit_counts = Counter()
+        def replace_match(m):
+            rule = mapping[m.group(0)]
+            hit_counts[rule[0]] += 1
+            return rule[2]
+        result = pattern.sub(replace_match, base)
+        for rid, old, new, risk, category in eligible:
+            if rid in hit_counts:
+                changes.append({'id':rid,'before':old,'after':new,'count':hit_counts[rid], 'risk':risk,'note':category})
     issues=protected_audit(CITATION.sub("",source) if remove_citations else source,result)
     if issues:
         return base, [x for x in changes if x['id']=='FORMAT'], 'Protected-content check: '+', '.join(issues)+'; phrase substitutions reverted'
@@ -293,7 +307,7 @@ if page=='Overview':
 
 elif page=='Gujarati editor':
     st.markdown('<div class="hero"><h1>ગુજરાતી વિશ્વકોશ · સંપાદક</h1><p>Gujarati editorial refinement · inspect every change · preserve source facts</p></div>',unsafe_allow_html=True)
-    st.caption('Gujarati encyclopedic editing with auditable changes. Rules are candidates, not verified Vishwakosh quotations.')
+    st.caption('વિશ્વકોશીય ભાષાશૈલી માટે સૂચિત શબ્દપ્રયોગો અને વાક્યરચના. દરેક ફેરફાર તપાસો; શબ્દસૂચિ પ્રમાણિત વિશ્વકોશ કોર્પસ પરથી ચકાસવાની બાકી છે.')
     src=st.text_area('મૂળ ગુજરાતી લખાણ',value=EXAMPLE,height=210,key='editor_input')
     c1,c2,c3=st.columns([1,1,2])
     citation=c1.checkbox('Remove citations',True)
@@ -306,7 +320,7 @@ elif page=='Gujarati editor':
         query=st.text_input('Search rule ID or Gujarati phrase')
         display=[r for r in RULES if (group=='All' or r[4]==group) and (not query or query.lower() in (' '.join(r)).lower())]
         st.dataframe(pd.DataFrame(display,columns=['ID','Original','Replacement','Review level','Category']),hide_index=True,use_container_width=True)
-        st.caption('Conservative rules run by default. Other candidates are opt-in and may change agency, emphasis or meaning.')
+        st.caption('Rules are candidate editorial preferences, not proof of Vishwakosh usage. Review-level rules can change meaning or technical terminology.')
         st.download_button(f'Export {len(RULES)}-rule catalog',pd.DataFrame(RULES,columns=['ID','Original','Replacement','Review level','Category']).to_csv(index=False).encode('utf-8-sig'),file_name='gujarati_editorial_rules.csv',mime='text/csv')
     if 'conversion_result' not in st.session_state:
         st.session_state.conversion_result = None
@@ -342,6 +356,7 @@ elif page=='Gujarati editor':
         st.warning('Context-sensitive substitutions applied. Compare with the source before using the output.')
     st.download_button('Download edited text',edited.encode('utf-8'),file_name='gujarati_vishwakosh_edit.txt',mime='text/plain')
     st.markdown('#### Style diagnostics')
+    st.caption('Style markers are measured, not inserted artificially. A high marker count is not evidence of authentic editorial quality.')
     before_profile=style_profile(original)
     after_profile=style_profile(edited)
     st.dataframe(pd.DataFrame({'Before':before_profile,'After':after_profile}),use_container_width=True)
